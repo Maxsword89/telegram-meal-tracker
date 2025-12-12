@@ -17,20 +17,18 @@ from logging import StreamHandler
 
 app = Flask(__name__)
 
-# 1. КОНФІГУРАЦІЯ БАЗИ ДАНИХ (PostgreSQL / Neon.tech)
+# 1. КОНФІГУРАЦІЯ БАЗИ ДАНИХ
 db_url = os.environ.get('DATABASE_URL')
 
-# Render та Heroku іноді вимагають заміни 'postgres://' на 'postgresql://'
 if db_url and db_url.startswith("postgres://"):
     db_url = db_url.replace("postgres://", "postgresql://", 1)
 
-# Використовуємо змінну середовища.
 app.config['SQLALCHEMY_DATABASE_URI'] = db_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
 
-# 2. БЕЗПЕКА: ТОКЕН БОТА (Змінна середовища Render)
+# 2. БЕЗПЕКА: ТОКЕН БОТА (ЧИТАЄМО ЗІ ЗМІННОЇ СЕРЕДОВИЩА)
 TELEGRAM_BOT_TOKEN = os.environ.get('TELEGRAM_BOT_TOKEN')
 
 # 3. НАЛАШТУВАННЯ CORS
@@ -61,18 +59,16 @@ class Meal(db.Model):
             'calories': self.calories
         }
 
-# --- ФУНКЦІЇ БЕЗПЕКИ (З ВИПРАВЛЕНОЮ ВАЛІДАЦІЄЮ ХЕШУ) ---
+# --- ФУНКЦІЇ БЕЗПЕКИ (ФІНАЛЬНА ВАЛІДАЦІЯ) ---
 
 def validate_telegram_init_data(init_data_string: str) -> dict | None:
-    """Перевіряє хеш initData, ігноруючи 'hash' та 'signature' при формуванні рядка перевірки."""
+    """Перевіряє хеш initData, ігноруючи 'hash' та 'signature'."""
     if not init_data_string or not TELEGRAM_BOT_TOKEN:
         return None
 
     params = init_data_string.split('&')
-    data_to_check = {} # Декодовані дані для user_id
+    data_to_check = {} 
     received_hash = None
-    
-    # Недекодовані дані, які підуть у рядок перевірки
     raw_check_data = [] 
 
     for param in params:
@@ -82,21 +78,14 @@ def validate_telegram_init_data(init_data_string: str) -> dict | None:
         try:
             key, value = param.split('=', 1)
             
-            # 1. Обробка поля hash
             if key == 'hash':
-                # Хеш, отриманий від Telegram, вже URL-декодований
                 received_hash = value
-            
-            # 2. Ігнорування полів, які не повинні бути у check_string
+            # !!! КРИТИЧНЕ ВИПРАВЛЕННЯ: Ігноруємо 'signature' !!!
             elif key == 'signature': 
-                continue # !!! КРИТИЧНЕ ВИПРАВЛЕННЯ: Ігноруємо 'signature' !!!
-            
-            # 3. Збір даних для перевірки та декодування
+                continue 
             else:
-                # Зберігаємо недекодовані дані для формування check_string
                 raw_check_data.append((key, value))
                 
-                # Додатково декодуємо для подальшого парсингу user/auth_date
                 decoded_key = urllib.parse.unquote(key)
                 decoded_value = urllib.parse.unquote(value)
                 data_to_check[decoded_key] = decoded_value
@@ -108,8 +97,7 @@ def validate_telegram_init_data(init_data_string: str) -> dict | None:
         app.logger.error("SECURITY ALERT: Hash missing.")
         return None
     
-    # 1. Формуємо рядок для перевірки: сортуємо за ключами і приєднуємо знаком '\n'.
-    # Використовуємо RAW_CHECK_DATA, щоб зберегти оригінальне кодування (як вимагає Telegram).
+    # 1. Формуємо рядок для перевірки:
     raw_check_data.sort(key=lambda x: x[0])
     
     data_check_string = []
@@ -129,19 +117,19 @@ def validate_telegram_init_data(init_data_string: str) -> dict | None:
     ).hexdigest()
 
     if calculated_hash != received_hash:
-        # Логування для діагностики (залишаємо для фінальної перевірки)
-        app.logger.error(f"SECURITY ALERT: Hash mismatch (Manual parse failed).")
+        app.logger.error(f"SECURITY ALERT: Hash mismatch (Final check failed).")
         app.logger.error(f"Check String: {data_check_string}")
         app.logger.error(f"Calculated Hash: {calculated_hash}")
         app.logger.error(f"Received Hash: {received_hash}")
         return None
 
-    # Якщо хеш збігається, отримуємо user_id з декодованих даних
+    # Якщо хеш збігається, отримуємо user_id
     if 'user' in data_to_check:
         try:
             user_data = json.loads(data_to_check['user'])
-            # Перевіряємо, чи дані ще дійсні (не старші 24 годин)
             auth_date = data_to_check.get('auth_date')
+            
+            # Перевірка часу (24 години)
             if auth_date and (time.time() - int(auth_date) > 86400):
                  app.logger.error("SECURITY ALERT: Auth data expired.")
                  return None
@@ -156,7 +144,6 @@ def validate_telegram_init_data(init_data_string: str) -> dict | None:
 
 def get_user_data_from_request():
     """Централізовано витягує та валідує дані користувача з request."""
-    # Оскільки initData передається в тілі JSON, ми отримуємо його з request.get_json
     data = request.get_json(silent=True)
     init_data = data.get('initData') if data else None
     
@@ -168,20 +155,16 @@ def get_user_data_from_request():
 
 # --- КІНЦЕВІ ТОЧКИ API ---
 
-# 1. Обробка фото (Симуляція AI)
 @app.route('/api/process_photo', methods=['POST'])
 def process_photo():
     user_info = get_user_data_from_request()
     if user_info is None:
-        app.logger.error("DIAGNOSTIC: process_photo FAILED - Unauthorized.")
         return jsonify({"error": "Unauthorized"}), 401
-    
-    # ТУТ МАЄ БУТИ ЛОГІКА ЗЧИТУВАННЯ ФАЙЛУ З request.files ТА ВИКЛИК GEMINI API
     
     # Симуляція результату
     time.sleep(1) 
     meal_data = {
-        "name": "Айвар із лавашем (Render API)",
+        "name": "Айвар із лавашем (API ОК)",
         "calories": 450,
         "description": "AI розпізнав: Паста з солодкого перцю та баклажанів. Оцінка: ~450 ккал."
     }
@@ -189,12 +172,10 @@ def process_photo():
     return jsonify(meal_data), 200
 
 
-# 2. Збереження прийому їжі (Запис у БД)
 @app.route('/api/save_meal', methods=['POST'])
 def save_meal():
     user_info = get_user_data_from_request()
     if user_info is None:
-        app.logger.error("DIAGNOSTIC: save_meal FAILED - Unauthorized.")
         return jsonify({"error": "Unauthorized"}), 401
 
     data = request.get_json()
@@ -213,17 +194,15 @@ def save_meal():
 
         db.session.add(new_meal)
         db.session.commit()
-        app.logger.error(f"DIAGNOSTIC: Meal saved successfully for User ID: {user_info['user_id']}")
         
     except Exception as e:
         db.session.rollback()
-        app.logger.error(f"DIAGNOSTIC: !!! FATAL DATABASE ERROR IN SAVE !!!: {e}") 
+        app.logger.error(f"Database error during meal save: {e}") 
         return jsonify({"error": "Database error during meal save"}), 500
 
     return jsonify({"message": "Meal saved successfully"}), 200
 
 
-# 3. Отримання щоденного звіту (Читання з БД)
 @app.route('/api/get_daily_report', methods=['POST'])
 def get_daily_report():
     user_info = get_user_data_from_request()
@@ -255,6 +234,6 @@ def get_daily_report():
     }), 200
 
 
-# Створення таблиць (виконується один раз)
+# Створення таблиць
 with app.app_context():
      db.create_all()
