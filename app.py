@@ -27,9 +27,10 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
 # !!! УВАГА: ДІАГНОСТИЧНИЙ ТОКЕН ЖОРСТКО ПРОПИСАНИЙ !!!
-# Після успішного тестування ЦЕЙ РЯДОК МАЄ БУТИ ВИДАЛЕНИЙ.
-DIAGNOSTIC_BOT_TOKEN = "8533436780:AAFXtcxhMvEA6k9GDugXwTSerTVBspw85dU"
-TELEGRAM_BOT_TOKEN = DIAGNOSTIC_BOT_TOKEN # Використовуємо його замість змінної середовища
+# Використовуйте токен, який ви щойно відкликали з BotFather.
+# Після успішного тестування ЦЕЙ РЯДОК МАЄ БУТИ ВИДАЛЕНИЙ і повернутий до читання os.environ.get('TELEGRAM_BOT_TOKEN').
+DIAGNOSTIC_BOT_TOKEN = "8533436780:AAGm5TbP6fpy8yXNE0_cun_L0OtFuDsiWA8"
+TELEGRAM_BOT_TOKEN = DIAGNOSTIC_BOT_TOKEN 
 
 CORS(app)
 
@@ -40,7 +41,7 @@ if not app.debug:
     app.logger.setLevel(logging.ERROR)
 
 
-# --- МОДЕЛЬ ДАНИХ (Без змін) ---
+# --- МОДЕЛЬ ДАНИХ ---
 
 class Meal(db.Model):
     __tablename__ = 'meals'
@@ -61,7 +62,7 @@ class Meal(db.Model):
 
 def validate_telegram_init_data(init_data_string: str) -> dict | None:
     """Перевіряє хеш initData, ігноруючи 'hash' та 'signature', використовуючи жорстко прописаний токен."""
-    # Тепер ми використовуємо DIAGNOSTIC_BOT_TOKEN, тому перевіряємо його
+    
     if not init_data_string or not TELEGRAM_BOT_TOKEN:
         return None
 
@@ -95,7 +96,7 @@ def validate_telegram_init_data(init_data_string: str) -> dict | None:
         app.logger.error("SECURITY ALERT: Hash missing.")
         return None
     
-    # 1. Формуємо рядок для перевірки:
+    # 1. Формуємо рядок для перевірки (СОРТУВАННЯ)
     raw_check_data.sort(key=lambda x: x[0])
     
     data_check_string = []
@@ -115,13 +116,14 @@ def validate_telegram_init_data(init_data_string: str) -> dict | None:
     ).hexdigest()
 
     if calculated_hash != received_hash:
+        # Логування для діагностики
         app.logger.error(f"DIAGNOSTIC FAILURE: Hash mismatch (Hardcoded token failed).")
         app.logger.error(f"Check String: {data_check_string}")
         app.logger.error(f"Calculated Hash: {calculated_hash}")
         app.logger.error(f"Received Hash: {received_hash}")
         return None
 
-    # Якщо хеш збігається, отримуємо user_id
+    # --- УСПІХ ВАЛІДАЦІЇ ---
     if 'user' in data_to_check:
         try:
             user_data = json.loads(data_to_check['user'])
@@ -131,7 +133,6 @@ def validate_telegram_init_data(init_data_string: str) -> dict | None:
                  app.logger.error("SECURITY ALERT: Auth data expired.")
                  return None
                  
-            # !!! УСПІШНЕ ПІДТВЕРДЖЕННЯ:
             app.logger.error(f"SUCCESS: Hash matched with hardcoded token! User ID: {user_data.get('id')}")
             return {"user_id": user_data.get("id"), "username": user_data.get("username")}
         except (json.JSONDecodeError, IndexError) as e:
@@ -152,7 +153,7 @@ def get_user_data_from_request():
     return validate_telegram_init_data(init_data)
 
 
-# --- КІНЦЕВІ ТОЧКИ API (Виводимо повідомлення ОК) ---
+# --- КІНЦЕВІ ТОЧКИ API ---
 
 @app.route('/api/process_photo', methods=['POST'])
 def process_photo():
@@ -163,7 +164,7 @@ def process_photo():
     # Симуляція результату
     time.sleep(1) 
     meal_data = {
-        "name": "Айвар із лавашем (ОК, ТЕСТ НА ХЕШ УСПІШНИЙ!)",
+        "name": "Айвар із лавашем (ОК, ХЕШ ПІДТВЕРДЖЕНО!)",
         "calories": 450,
         "description": "AI розпізнав: Паста з солодкого перцю та баклажанів. Оцінка: ~450 ккал."
     }
@@ -173,15 +174,16 @@ def process_photo():
 
 @app.route('/api/save_meal', methods=['POST'])
 def save_meal():
-    # ... (решта функцій, що використовують get_user_data_from_request) ...
     user_info = get_user_data_from_request()
     if user_info is None:
         return jsonify({"error": "Unauthorized"}), 401
 
     data = request.get_json()
     meal_data = data.get('meal', {})
-    
-    # ... (логіка збереження) ...
+
+    if not all([meal_data.get('name'), meal_data.get('calories') is not None]):
+        return jsonify({"error": "Missing meal details"}), 400
+
     try:
         new_meal = Meal(
             user_id=user_info['user_id'],
@@ -193,18 +195,21 @@ def save_meal():
         db.session.commit()
     except Exception as e:
         db.session.rollback()
+        app.logger.error(f"Database error during meal save: {e}") 
         return jsonify({"error": "Database error during meal save"}), 500
 
     return jsonify({"message": "Meal saved successfully"}), 200
 
 @app.route('/api/get_daily_report', methods=['POST'])
 def get_daily_report():
-    # ... (решта функцій) ...
     user_info = get_user_data_from_request()
     target_calories = 2000
 
     if user_info is None:
-        return jsonify({"target": target_calories, "consumed": 0, "date": datetime.now().strftime("%d %B %Y"), "meals": []}), 200
+        return jsonify({
+            "target": target_calories, "consumed": 0,
+            "date": datetime.now().strftime("%d %B %Y"), "meals": []
+        }), 200
 
     user_id = user_info['user_id']
     
