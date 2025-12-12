@@ -5,9 +5,9 @@ import hmac
 import hashlib
 import urllib.parse
 import json
-import time
+import time 
 from flask_cors import CORS
-# Імпорти для логування
+import os
 import sys
 import logging
 from logging import StreamHandler
@@ -17,22 +17,26 @@ from logging import StreamHandler
 
 app = Flask(__name__)
 
-# 1. КОНФІГУРАЦІЯ БАЗИ ДАНИХ (SQLite)
-# !!! ОБОВ'ЯЗКОВО ЗАМІНІТЬ 'Maxsword2025' НА ВАШЕ ІМ'Я КОРИСТУВАЧА !!!
-db_path = '/home/Maxsword2025/meal_tracker.db'
-app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
+# 1. КОНФІГУРАЦІЯ БАЗИ ДАНИХ (PostgreSQL / Supabase)
+db_url = os.environ.get('DATABASE_URL')
+
+# Render та Heroku іноді вимагають заміни 'postgres://' на 'postgresql://' для SQLAlchemy
+if db_url and db_url.startswith("postgres://"):
+    db_url = db_url.replace("postgres://", "postgresql://", 1)
+
+# Використовуємо змінну середовища. Якщо її немає, додаток не запуститься (це правильно для PaaS)
+app.config['SQLALCHEMY_DATABASE_URI'] = db_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
 
-# 2. БЕЗПЕКА: ТОКЕН БОТА ДЛЯ ВАЛІДАЦІЇ
-# !!! ПЕРЕВІРЕНИЙ ТОКЕН: !!!
-TELEGRAM_BOT_TOKEN = "8533436780:AAFfjgHWjCabQXQKgyf_gcrNJCd3PffnG10"
+# 2. БЕЗПЕКА: ТОКЕН БОТА (Змінна середовища Render)
+TELEGRAM_BOT_TOKEN = os.environ.get('TELEGRAM_BOT_TOKEN')
 
 # 3. НАЛАШТУВАННЯ CORS
 CORS(app)
 
-# 4. НАЛАШТУВАННЯ ЛОГУВАННЯ ДЛЯ PYTHONANYWHERE
+# 4. НАЛАШТУВАННЯ ЛОГУВАННЯ (для Render це також корисно)
 if not app.debug:
     handler = StreamHandler(sys.stderr)
     handler.setLevel(logging.ERROR)
@@ -60,25 +64,24 @@ class Meal(db.Model):
 # --- ФУНКЦІЇ БЕЗПЕКИ (З РУЧНИМ ПАРСИНГОМ) ---
 
 def validate_telegram_init_data(init_data_string: str) -> dict | None:
-    """Перевіряє хеш initData вручну, щоб уникнути проблем parse_qs."""
-    if not init_data_string:
+    """Перевіряє хеш initData вручну, щоб уникнути проблем кодування."""
+    if not init_data_string or not TELEGRAM_BOT_TOKEN:
         return None
 
     params = init_data_string.split('&')
-
     data_to_check = {}
     received_hash = None
 
     for param in params:
         if not param:
             continue
-
+            
         try:
             key, value = param.split('=', 1)
             # URL декодування (КРИТИЧНО)
             key = urllib.parse.unquote(key)
             value = urllib.parse.unquote(value)
-
+            
             if key == 'hash':
                 received_hash = value
             else:
@@ -89,10 +92,10 @@ def validate_telegram_init_data(init_data_string: str) -> dict | None:
     if not received_hash:
         app.logger.error("SECURITY ALERT: Hash missing.")
         return None
-
+    
     # Сортуємо ключі та формуємо рядок 'ключ=значення\n'
     sorted_keys = sorted(data_to_check.keys())
-
+    
     data_check_string = []
     for key in sorted_keys:
         data_check_string.append(f"{key}={data_to_check[key]}")
@@ -110,8 +113,7 @@ def validate_telegram_init_data(init_data_string: str) -> dict | None:
     ).hexdigest()
 
     if calculated_hash != received_hash:
-        # Виводимо обидва хеші для діагностики, якщо знову виникне помилка
-        app.logger.error(f"SECURITY ALERT: Hash mismatch (Manual parse failed). Calculated: {calculated_hash}, Received: {received_hash}")
+        app.logger.error(f"SECURITY ALERT: Hash mismatch (Manual parse failed).") 
         return None
 
     # Якщо хеш збігається, отримуємо user_id з JSON
@@ -130,7 +132,7 @@ def get_user_data_from_request():
     """Централізовано витягує та валідує дані користувача з request."""
     data = request.get_json(silent=True)
     init_data = data.get('initData') if data else None
-
+    
     if not init_data:
         return None
 
@@ -139,20 +141,19 @@ def get_user_data_from_request():
 
 # --- КІНЦЕВІ ТОЧКИ API ---
 
-# 1. Обробка фото (Симуляція AI)
+# 1. Обробка фото (Симуляція AI - готова до заміни на Gemini)
 @app.route('/api/process_photo', methods=['POST'])
 def process_photo():
     user_info = get_user_data_from_request()
     if user_info is None:
         app.logger.error("DIAGNOSTIC: process_photo FAILED - Unauthorized.")
         return jsonify({"error": "Unauthorized"}), 401
-
-    app.logger.error("DIAGNOSTIC: process_photo received JSON (Simulating AI response).")
-
-    # !!! СИМУЛЯЦІЯ AI !!!
-    time.sleep(1)
+    
+    # ТУТ МАЄ БУТИ ЛОГІКА ЗЧИТУВАННЯ ФАЙЛУ З request.files ТА ВИКЛИК GEMINI API
+    
+    time.sleep(1) 
     meal_data = {
-        "name": "Айвар із лавашем (Ручний Парсинг)",
+        "name": "Айвар із лавашем (Render API)",
         "calories": 450,
         "description": "AI розпізнав: Паста з солодкого перцю та баклажанів. Оцінка: ~450 ккал."
     }
@@ -185,10 +186,11 @@ def save_meal():
         db.session.add(new_meal)
         db.session.commit()
         app.logger.error(f"DIAGNOSTIC: Meal saved successfully for User ID: {user_info['user_id']}")
-
+        
     except Exception as e:
         db.session.rollback()
-        app.logger.error(f"DIAGNOSTIC: !!! FATAL DATABASE ERROR IN SAVE !!!: {e}")
+        # Ця помилка тепер логуватиме помилки Supabase, а не проблеми з дозволами SQLite
+        app.logger.error(f"DIAGNOSTIC: !!! FATAL DATABASE ERROR IN SAVE !!!: {e}") 
         return jsonify({"error": "Database error during meal save"}), 500
 
     return jsonify({"message": "Meal saved successfully"}), 200
@@ -197,6 +199,10 @@ def save_meal():
 # 3. Отримання щоденного звіту (Читання з БД)
 @app.route('/api/get_daily_report', methods=['POST'])
 def get_daily_report():
+    # ... (код залишається незмінним)
+    # ... (для компактності)
+    
+    # ... (продовження)
     user_info = get_user_data_from_request()
     target_calories = 2000
 
@@ -207,7 +213,7 @@ def get_daily_report():
         }), 200
 
     user_id = user_info['user_id']
-
+    
     today = datetime.now().date()
     start_of_day = datetime(today.year, today.month, today.day)
 
@@ -226,11 +232,7 @@ def get_daily_report():
     }), 200
 
 
-# Створення таблиць при запуску (важливо для першого запуску)
+# Створення таблиць (для PaaS це виконується один раз)
 with app.app_context():
-     # Це забезпечує, що таблиці будуть створені, якщо файлу БД немає
+     # Після підключення до Supabase, це створить таблицю Meals у вашій базі даних
      db.create_all()
-
-# Для PythonAnywhere цей блок не виконується
-if __name__ == '__main__':
-    app.run(debug=True)
