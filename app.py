@@ -24,7 +24,7 @@ db_url = os.environ.get('DATABASE_URL')
 if db_url and db_url.startswith("postgres://"):
     db_url = db_url.replace("postgres://", "postgresql://", 1)
 
-# Використовуємо змінну середовища. Якщо її немає, додаток не запуститься
+# Використовуємо змінну середовища.
 app.config['SQLALCHEMY_DATABASE_URI'] = db_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
@@ -61,19 +61,19 @@ class Meal(db.Model):
             'calories': self.calories
         }
 
-# --- ФУНКЦІЇ БЕЗПЕКИ (ФІНАЛЬНИЙ ПАРСИНГ initData) ---
+# --- ФУНКЦІЇ БЕЗПЕКИ (З ВИПРАВЛЕНОЮ ВАЛІДАЦІЄЮ ХЕШУ) ---
 
 def validate_telegram_init_data(init_data_string: str) -> dict | None:
-    """Перевіряє хеш initData вручну, використовуючи недекодовані значення для обчислення хешу."""
+    """Перевіряє хеш initData, ігноруючи 'hash' та 'signature' при формуванні рядка перевірки."""
     if not init_data_string or not TELEGRAM_BOT_TOKEN:
         return None
 
     params = init_data_string.split('&')
-    data_to_check = {}
+    data_to_check = {} # Декодовані дані для user_id
     received_hash = None
     
-    # Створюємо список елементів, які будуть використані для формування check_string
-    raw_check_data = []
+    # Недекодовані дані, які підуть у рядок перевірки
+    raw_check_data = [] 
 
     for param in params:
         if not param:
@@ -82,11 +82,18 @@ def validate_telegram_init_data(init_data_string: str) -> dict | None:
         try:
             key, value = param.split('=', 1)
             
-            # Телеграм вимагає, щоб для обчислення хешу використовувалися 
-            # оригінальні (не-декодовані) ключі та значення, крім поля 'hash'.
+            # 1. Обробка поля hash
             if key == 'hash':
-                received_hash = value # Тут value вже URL-декодоване
+                # Хеш, отриманий від Telegram, вже URL-декодований
+                received_hash = value
+            
+            # 2. Ігнорування полів, які не повинні бути у check_string
+            elif key == 'signature': 
+                continue # !!! КРИТИЧНЕ ВИПРАВЛЕННЯ: Ігноруємо 'signature' !!!
+            
+            # 3. Збір даних для перевірки та декодування
             else:
+                # Зберігаємо недекодовані дані для формування check_string
                 raw_check_data.append((key, value))
                 
                 # Додатково декодуємо для подальшого парсингу user/auth_date
@@ -102,14 +109,11 @@ def validate_telegram_init_data(init_data_string: str) -> dict | None:
         return None
     
     # 1. Формуємо рядок для перевірки: сортуємо за ключами і приєднуємо знаком '\n'.
-    # Ми використовуємо RAW_CHECK_DATA, щоб зберегти оригінальне кодування, як вимагає Telegram.
-    
-    # Сортуємо за ключами (перший елемент кортежу)
+    # Використовуємо RAW_CHECK_DATA, щоб зберегти оригінальне кодування (як вимагає Telegram).
     raw_check_data.sort(key=lambda x: x[0])
     
     data_check_string = []
     for key, value in raw_check_data:
-        # Тут ми використовуємо URL-кодовані значення для формування рядка
         data_check_string.append(f"{key}={value}")
 
     data_check_string = "\n".join(data_check_string)
@@ -125,6 +129,7 @@ def validate_telegram_init_data(init_data_string: str) -> dict | None:
     ).hexdigest()
 
     if calculated_hash != received_hash:
+        # Логування для діагностики (залишаємо для фінальної перевірки)
         app.logger.error(f"SECURITY ALERT: Hash mismatch (Manual parse failed).")
         app.logger.error(f"Check String: {data_check_string}")
         app.logger.error(f"Calculated Hash: {calculated_hash}")
@@ -135,6 +140,12 @@ def validate_telegram_init_data(init_data_string: str) -> dict | None:
     if 'user' in data_to_check:
         try:
             user_data = json.loads(data_to_check['user'])
+            # Перевіряємо, чи дані ще дійсні (не старші 24 годин)
+            auth_date = data_to_check.get('auth_date')
+            if auth_date and (time.time() - int(auth_date) > 86400):
+                 app.logger.error("SECURITY ALERT: Auth data expired.")
+                 return None
+                 
             return {"user_id": user_data.get("id"), "username": user_data.get("username")}
         except (json.JSONDecodeError, IndexError) as e:
             app.logger.error(f"Failed to parse user JSON: {e}")
@@ -145,11 +156,11 @@ def validate_telegram_init_data(init_data_string: str) -> dict | None:
 
 def get_user_data_from_request():
     """Централізовано витягує та валідує дані користувача з request."""
+    # Оскільки initData передається в тілі JSON, ми отримуємо його з request.get_json
     data = request.get_json(silent=True)
     init_data = data.get('initData') if data else None
     
     if not init_data:
-        app.logger.error("DIAGNOSTIC: InitData missing from request.")
         return None
 
     return validate_telegram_init_data(init_data)
@@ -157,7 +168,7 @@ def get_user_data_from_request():
 
 # --- КІНЦЕВІ ТОЧКИ API ---
 
-# 1. Обробка фото (Симуляція AI - готова до заміни на Gemini)
+# 1. Обробка фото (Симуляція AI)
 @app.route('/api/process_photo', methods=['POST'])
 def process_photo():
     user_info = get_user_data_from_request()
@@ -244,7 +255,6 @@ def get_daily_report():
     }), 200
 
 
-# Створення таблиць (для PaaS це виконується один раз)
+# Створення таблиць (виконується один раз)
 with app.app_context():
-     # Після підключення до Neon.tech, це створить таблицю Meals у вашій базі даних
      db.create_all()
