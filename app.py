@@ -8,16 +8,16 @@ import os
 import sys
 import logging
 from logging import StreamHandler
-# Прибрано імпорт hmac та hashlib, оскільки вони не використовуються
 
 
 # --- НАЛАШТУВАННЯ ТА КОНФІГУРАЦІЯ ---
 
 app = Flask(__name__)
 
-# 1. КОНФІГУРАЦІЯ БАЗИ ДАНИХ
+# 1. КОНФІГУРАЦІЯ БАЗИ ДАНИХ (Використовуємо DATABASE_URL з Render)
 db_url = os.environ.get('DATABASE_URL')
 if db_url and db_url.startswith("postgres://"):
+    # Корекція URL для SQLAlchemy, необхідна для PostgreSQL на Render
     db_url = db_url.replace("postgres://", "postgresql://", 1)
 
 app.config['SQLALCHEMY_DATABASE_URI'] = db_url
@@ -32,10 +32,11 @@ TELEGRAM_BOT_TOKEN = os.environ.get('TELEGRAM_BOT_TOKEN')
 CORS(app)
 
 if not app.debug:
+    # Налаштування логування для Production (Render)
     handler = StreamHandler(sys.stderr)
-    handler.setLevel(logging.ERROR)
+    handler.setLevel(logging.INFO) # Змінено на INFO для чистоти логів
     app.logger.addHandler(handler)
-    app.logger.setLevel(logging.ERROR)
+    app.logger.setLevel(logging.INFO)
 
 
 # --- МОДЕЛЬ ДАНИХ ---
@@ -55,7 +56,7 @@ class Meal(db.Model):
             'calories': self.calories
         }
 
-# --- ФУНКЦІЇ БЕЗПЕКИ (ВАЛІДАЦІЯ ТИМЧАСОВО ВІДКЛЮЧЕНА) ---
+# --- ФУНКЦІЇ БЕЗПЕКИ (ВАЛІДАЦІЯ ХЕШУ ВІДКЛЮЧЕНА) ---
 
 def validate_telegram_init_data(init_data_string: str) -> dict | None:
     """
@@ -94,7 +95,7 @@ def get_user_data_from_request():
     init_data = data.get('initData') if data else None
     
     if not init_data:
-        app.logger.error("INITDATA IS MISSING IN REQUEST.")
+        app.logger.warning("INITDATA IS MISSING IN REQUEST.")
         return None
 
     return validate_telegram_init_data(init_data)
