@@ -1,5 +1,6 @@
-Flask
-Flask-SQLAlchemy
+# ... (інші бібліотеки)
+flask
+flask-cors
 gunicorn
 psycopg2-binary
-Flask-CORS
+pytz  
