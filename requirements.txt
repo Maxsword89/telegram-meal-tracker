@@ -1,0 +1,5 @@
+# Файл: requirements.txt
+Flask
+Flask-SQLAlchemy
+gunicorn
+psycopg2-binary  # Драйвер для PostgreSQL (Supabase)
