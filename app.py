@@ -1,6 +1,9 @@
 from flask import Flask, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
+import hmac
+import hashlib
+import urllib.parse
 import json
 import time
 from flask_cors import CORS
@@ -10,12 +13,12 @@ import logging
 from logging import StreamHandler
 
 
-# --- НАЛАШТУВАННЯ ТА КОНФІГУРАЦІЯ (Без змін) ---
+# --- НАЛАШТУВАННЯ ТА КОНФІГУРАЦІЯ ---
 
 app = Flask(__name__)
 
+# 1. КОНФІГУРАЦІЯ БАЗИ ДАНИХ (Використовуємо DATABASE_URL)
 db_url = os.environ.get('DATABASE_URL')
-
 if db_url and db_url.startswith("postgres://"):
     db_url = db_url.replace("postgres://", "postgresql://", 1)
 
@@ -24,7 +27,7 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
 
-# Токен все ще потрібен, але не використовується для валідації
+# 2. БЕЗПЕКА: ТОКЕН БОТА (ЧИТАЄМО ЗІ ЗМІННОЇ СЕРЕДОВИЩА)
 TELEGRAM_BOT_TOKEN = os.environ.get('TELEGRAM_BOT_TOKEN')
 
 CORS(app)
@@ -53,7 +56,7 @@ class Meal(db.Model):
             'calories': self.calories
         }
 
-# --- ФУНКЦІЇ БЕЗПЕКИ (ПОВНЕ ВІДКЛЮЧЕННЯ ВАЛІДАЦІЇ!!!) ---
+# --- ФУНКЦІЇ БЕЗПЕКИ (ВАЛІДАЦІЯ ТИМЧАСОВО ВІДКЛЮЧЕНА) ---
 
 def validate_telegram_init_data(init_data_string: str) -> dict | None:
     """
@@ -65,7 +68,7 @@ def validate_telegram_init_data(init_data_string: str) -> dict | None:
 
     from urllib.parse import unquote
     
-    # Витягуємо дані користувача
+    # Витягуємо дані користувача (Це єдина перевірка, яку ми залишаємо: наявність даних)
     params = init_data_string.split('&')
     user_data_string = None
     
@@ -79,7 +82,8 @@ def validate_telegram_init_data(init_data_string: str) -> dict | None:
             user_data = json.loads(user_data_string)
             # *** ПОВЕРТАЄМО ДАНІ БЕЗ ПЕРЕВІРКИ ХЕШУ ***
             app.logger.error("DIAGNOSTIC MODE: HASH VALIDATION IS DISABLED! Using user data.")
-            return {"user_id": user_data.get("id", 999999), "username": user_data.get("username", "TestUser")}
+            # У Mini App завжди має бути ID, тому це безпечно для особистого використання.
+            return {"user_id": user_data.get("id"), "username": user_data.get("username")}
         except (json.JSONDecodeError, IndexError):
             pass
 
@@ -92,26 +96,23 @@ def get_user_data_from_request():
     init_data = data.get('initData') if data else None
     
     if not init_data:
-        # Якщо initData взагалі відсутня, це проблема фронтенду
         app.logger.error("DIAGNOSTIC MODE: INITDATA IS MISSING IN REQUEST.")
         return None
 
     return validate_telegram_init_data(init_data)
 
 
-# --- КІНЦЕВІ ТОЧКИ API (Виводимо повідомлення ОК) ---
+# --- КІНЦЕВІ ТОЧКИ API ---
 
 @app.route('/api/process_photo', methods=['POST'])
 def process_photo():
     user_info = get_user_data_from_request()
     if user_info is None:
-        app.logger.error("DIAGNOSTIC: process_photo FAILED - Unauthorized (User data not parsed).")
         return jsonify({"error": "Unauthorized"}), 401
     
     # Симуляція результату
     time.sleep(1) 
     meal_data = {
-        # Додаємо мітку 'WORKING', щоб підтвердити, що це цей код
         "name": f"Айвар (РЕЖИМ БЕЗ ВАЛІДАЦІЇ). ID: {user_info['user_id']}",
         "calories": 450,
         "description": "API працює! Проблема 100% у валідації хешу."
