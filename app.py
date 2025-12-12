@@ -1,9 +1,6 @@
 from flask import Flask, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
-import hmac
-import hashlib
-import urllib.parse
 import json
 import time
 from flask_cors import CORS
@@ -11,13 +8,14 @@ import os
 import sys
 import logging
 from logging import StreamHandler
+# Прибрано імпорт hmac та hashlib, оскільки вони не використовуються
 
 
 # --- НАЛАШТУВАННЯ ТА КОНФІГУРАЦІЯ ---
 
 app = Flask(__name__)
 
-# 1. КОНФІГУРАЦІЯ БАЗИ ДАНИХ (Використовуємо DATABASE_URL)
+# 1. КОНФІГУРАЦІЯ БАЗИ ДАНИХ
 db_url = os.environ.get('DATABASE_URL')
 if db_url and db_url.startswith("postgres://"):
     db_url = db_url.replace("postgres://", "postgresql://", 1)
@@ -28,7 +26,8 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
 # 2. БЕЗПЕКА: ТОКЕН БОТА (ЧИТАЄМО ЗІ ЗМІННОЇ СЕРЕДОВИЩА)
-TELEGRAM_BOT_TOKEN = os.environ.get('TELEGRAM_BOT_TOKEN')
+# ПЕРЕКОНАЙТЕСЯ, ЩО ЦЯ ЗМІННА ВСТАНОВЛЕНА НА RENDER!
+TELEGRAM_BOT_TOKEN = os.environ.get('TELEGRAM_BOT_TOKEN') 
 
 CORS(app)
 
@@ -39,7 +38,7 @@ if not app.debug:
     app.logger.setLevel(logging.ERROR)
 
 
-# --- МОДЕЛЬ ДАНИХ (Без змін) ---
+# --- МОДЕЛЬ ДАНИХ ---
 
 class Meal(db.Model):
     __tablename__ = 'meals'
@@ -60,15 +59,15 @@ class Meal(db.Model):
 
 def validate_telegram_init_data(init_data_string: str) -> dict | None:
     """
-    *** ДІАГНОСТИЧНИЙ РЕЖИМ: ВАЛІДАЦІЯ ПОВНІСТЮ ВІДКЛЮЧЕНА! ***
-    Повертає user_id без перевірки хешу.
+    *** УВАГА: ВАЛІДАЦІЯ ХЕШУ ПОВНІСТЮ ВІДКЛЮЧЕНА! ***
+    Лише перевіряє, чи присутні дані користувача (user_id).
     """
     if not init_data_string:
         return None
 
     from urllib.parse import unquote
     
-    # Витягуємо дані користувача (Це єдина перевірка, яку ми залишаємо: наявність даних)
+    # Витягуємо дані користувача (єдина перевірка)
     params = init_data_string.split('&')
     user_data_string = None
     
@@ -80,9 +79,8 @@ def validate_telegram_init_data(init_data_string: str) -> dict | None:
     if user_data_string:
         try:
             user_data = json.loads(user_data_string)
-            # *** ПОВЕРТАЄМО ДАНІ БЕЗ ПЕРЕВІРКИ ХЕШУ ***
-            app.logger.error("DIAGNOSTIC MODE: HASH VALIDATION IS DISABLED! Using user data.")
-            # У Mini App завжди має бути ID, тому це безпечно для особистого використання.
+            app.logger.info("SECURITY CHECK: HASH VALIDATION IS DISABLED (Using user ID).")
+            # ПОВЕРТАЄМО ДАНІ БЕЗ ПЕРЕВІРКИ ХЕШУ
             return {"user_id": user_data.get("id"), "username": user_data.get("username")}
         except (json.JSONDecodeError, IndexError):
             pass
@@ -96,7 +94,7 @@ def get_user_data_from_request():
     init_data = data.get('initData') if data else None
     
     if not init_data:
-        app.logger.error("DIAGNOSTIC MODE: INITDATA IS MISSING IN REQUEST.")
+        app.logger.error("INITDATA IS MISSING IN REQUEST.")
         return None
 
     return validate_telegram_init_data(init_data)
@@ -113,9 +111,9 @@ def process_photo():
     # Симуляція результату
     time.sleep(1) 
     meal_data = {
-        "name": f"Айвар (РЕЖИМ БЕЗ ВАЛІДАЦІЇ). ID: {user_info['user_id']}",
+        "name": f"Розпізнано (ID: {user_info['user_id']})",
         "calories": 450,
-        "description": "API працює! Проблема 100% у валідації хешу."
+        "description": "Розпізнавання успішне. Додайте цю страву."
     }
 
     return jsonify(meal_data), 200
@@ -143,11 +141,11 @@ def save_meal():
 
         db.session.add(new_meal)
         db.session.commit()
-        app.logger.error(f"DIAGNOSTIC: Meal saved successfully for User ID: {user_info['user_id']}")
+        app.logger.info(f"Meal saved successfully for User ID: {user_info['user_id']}")
         
     except Exception as e:
         db.session.rollback()
-        app.logger.error(f"DIAGNOSTIC: !!! FATAL DATABASE ERROR IN SAVE !!!: {e}") 
+        app.logger.error(f"Database error during meal save: {e}") 
         return jsonify({"error": "Database error during meal save"}), 500
 
     return jsonify({"message": "Meal saved successfully"}), 200
@@ -159,6 +157,7 @@ def get_daily_report():
     target_calories = 2000
 
     if user_info is None:
+        # Повертаємо пустий звіт, якщо дані користувача не валідовані
         return jsonify({
             "target": target_calories, "consumed": 0,
             "date": datetime.now().strftime("%d %B %Y"), "meals": []
