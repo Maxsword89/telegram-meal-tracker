@@ -1,31 +1,23 @@
-# app.py (ФІНАЛЬНИЙ КОД)
-from flask import Flask, request, jsonify
+# app.py (ФІНАЛЬНИЙ КОД: ДОДАНО ОБСЛУГОВУВАННЯ HTML)
+from flask import Flask, request, jsonify, send_from_directory # <<< ДОДАНО send_from_directory
 from urllib.parse import parse_qsl
 import json
 from datetime import datetime
 from flask_cors import CORS
-import time # Додано для імітації затримки AI
+import time 
 
 app = Flask(__name__)
-# Дозволяє запити з Telegram WebApp
-# УВАГА: для реального продакшену потрібно обмежити домен
 CORS(app) 
 
-# --------------------------------------------------------------------------
-# --- 1. ІМІТАЦІЯ БАЗИ ДАНИХ (Зберігається в пам'яті сервера) ---
-# --------------------------------------------------------------------------
+# --- 1. ІМІТАЦІЯ БАЗИ ДАНИХ ---
+USER_PROFILES = {} 
+USER_MEALS = {}    
+USER_WATER = {}    
 
-USER_PROFILES = {} # {user_id: {name: ..., target_calories: ...}}
-USER_MEALS = {}    # {user_id: [{'name': '...', 'calories': 0, 'time': 'HH:MM'}, ...]}
-USER_WATER = {}    # {user_id: 1500}
-
-# --------------------------------------------------------------------------
-# --- 2. ДОПОМІЖНІ ФУНКЦІЇ ДЛЯ ОБРОБКИ ТА РОЗРАХУНКІВ ---
-# --------------------------------------------------------------------------
+# --- 2. ДОПОМІЖНІ ФУНКЦІЇ ---
 
 def get_user_id_from_initdata(init_data: str) -> str:
     """Витягує Telegram user ID з initData"""
-    # Додано перевірку, щоб не падати, якщо init_data порожній
     if not init_data:
         return 'mock_user_id'
     try:
@@ -37,29 +29,23 @@ def get_user_id_from_initdata(init_data: str) -> str:
         return 'mock_user_id'
 
 def calculate_target_calories(profile_data: dict) -> int:
-    """Розрахунок цільових калорій (дуже спрощений)"""
+    """Розрахунок цільових калорій (спрощений)"""
     weight = profile_data.get('weight', 75)
-    
-    # Спрощена формула на основі ваги та мети
     base_kcal = weight * 30
     
     if profile_data.get('goal') == 'Схуднення':
-        return int(base_kcal * 0.9) # Дефіцит
+        return int(base_kcal * 0.9) 
     elif profile_data.get('goal') == 'Набір маси':
-        return int(base_kcal * 1.1) # Профіцит
+        return int(base_kcal * 1.1) 
     
-    return int(base_kcal) # Підтримка
+    return int(base_kcal) 
 
-# --------------------------------------------------------------------------
-# --- 3. ЛОГІКА ЗБЕРЕЖЕННЯ/ОТРИМАННЯ ДАНИХ (ІМІТАЦІЯ БД) ---
-# --------------------------------------------------------------------------
+# --- 3. ЛОГІКА ЗБЕРЕЖЕННЯ/ОТРИМАННЯ ДАНИХ ---
 
 def save_profile_data(profile_data: dict) -> int:
-    """Зберігає профіль користувача"""
     user_id = get_user_id_from_initdata(profile_data['initData'])
     target_kcal = calculate_target_calories(profile_data)
     
-    # ЗБЕРЕЖЕННЯ ПРОФІЛЮ
     profile_data['target_calories'] = target_kcal
     USER_PROFILES[user_id] = profile_data
     
@@ -67,11 +53,9 @@ def save_profile_data(profile_data: dict) -> int:
 
 
 def get_profile_data(user_id: str) -> dict or None:
-    """Отримує профіль користувача"""
     profile = USER_PROFILES.get(user_id)
     
     if profile:
-        # Повертаємо лише необхідні поля для уникнення надлишковості
         return {
             'name': profile.get('name'), 
             'weight': profile.get('weight'), 
@@ -87,7 +71,6 @@ def get_profile_data(user_id: str) -> dict or None:
     return None
 
 def save_meal_data(user_id: str, meal: dict) -> bool:
-    """Зберігає прийом їжі для поточного дня"""
     meal['time'] = datetime.now().strftime('%H:%M')
     
     if user_id not in USER_MEALS:
@@ -98,7 +81,6 @@ def save_meal_data(user_id: str, meal: dict) -> bool:
     return True
 
 def save_water_data(user_id: str, amount_ml: int) -> int:
-    """Зберігає споживання води та повертає новий загальний обсяг"""
     current_amount = USER_WATER.get(user_id, 0)
     new_amount = current_amount + amount_ml
     
@@ -108,11 +90,8 @@ def save_water_data(user_id: str, amount_ml: int) -> int:
 
 
 def get_daily_report_data(user_id: str) -> dict:
-    """Отримує звіт для дашборду, використовуючи збережені дані"""
-    
     profile = get_profile_data(user_id)
     
-    # Якщо профіль не знайдено (користувач вперше)
     if not profile:
         return {
             'user_name': 'Користувач', 'target': 2000, 'consumed': 0, 
@@ -121,12 +100,10 @@ def get_daily_report_data(user_id: str) -> dict:
             'meals': []
         }
     
-    # Дані зі збереженого профілю
     user_name = profile['name']
     target_kcal = profile['target_calories']
     water_target = profile['water_target']
     
-    # Дані зі збережених прийомів їжі та води
     meals = USER_MEALS.get(user_id, [])
     consumed_kcal = sum(meal['calories'] for meal in meals)
     water_consumed = USER_WATER.get(user_id, 0)
@@ -142,10 +119,8 @@ def get_daily_report_data(user_id: str) -> dict:
     }
 
 
-# ФІКС: ФУНКЦІЯ AI-ОБРОБКИ (ДОДАНО ІМІТАЦІЮ ЗАТРИМКИ)
 def process_photo_with_ai(image_base64: str) -> dict:
     """Імітує обробку фото AI"""
-    # Імітуємо затримку, щоб перевірити Loader
     time.sleep(2) 
     
     return {
@@ -155,16 +130,13 @@ def process_photo_with_ai(image_base64: str) -> dict:
     }
 
 
-# --------------------------------------------------------------------------
 # --- 4. МАРШРУТИ API (ENDPOINTS) ---
-# --------------------------------------------------------------------------
 
 @app.route('/api/get_profile', methods=['POST'])
 def get_profile():
     data = request.json
     init_data = data.get('initData')
     user_id = get_user_id_from_initdata(init_data)
-    
     profile = get_profile_data(user_id)
     
     if profile:
@@ -189,7 +161,6 @@ def get_daily_report():
     data = request.json
     init_data = data.get('initData')
     user_id = get_user_id_from_initdata(init_data)
-    
     report = get_daily_report_data(user_id)
     return jsonify(report)
 
@@ -244,6 +215,16 @@ def save_water():
         app.logger.error(f"Error saving water: {e}")
         return jsonify({'success': False, 'error': 'Помилка збереження води'}), 500
 
+# --- 5. СТАТИЧНІ МАРШРУТИ (FIX 404 URL Not Found) ---
+# Обслуговують index.html, profile.html та інші статичні файли
+@app.route('/')
+def serve_index():
+    return send_from_directory('.', 'index.html')
+
+@app.route('/<path:filename>')
+def serve_static(filename):
+    return send_from_directory('.', filename)
+# -----------------------------------------------------
 
 if __name__ == '__main__':
     app.run(debug=True)
