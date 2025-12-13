@@ -1,4 +1,4 @@
-# --- app.py ---
+# --- app.py (ФІНАЛЬНИЙ КОД З BASE64 В JSON) ---
 
 import os
 import json
@@ -67,7 +67,6 @@ def release_db_connection(conn):
 # --- ФУНКЦІЯ ВАЛІДАЦІЇ TELEGRAM INITDATA ---
 def validate_init_data(init_data):
     try:
-        # ПЕРЕВІРКА: чи init_data не порожній
         if not init_data:
              raise ValueError("InitData is empty.")
              
@@ -198,40 +197,41 @@ def save_meal():
             release_db_connection(conn)
 
 
-# --- 3. РОУТ: ОБРОБКА ФОТО AI (GEMINI VISION) - ЧИТАЄ initData З ЗАГОЛОВКА ---
+# --- 3. РОУТ: ОБРОБКА ФОТО AI (GEMINI VISION) - ПРИЙМАЄ BASE64 В JSON ТІЛІ ---
 @app.route('/api/process_photo', methods=['POST'])
 @cross_origin()
 def process_photo():
-    # 1. Отримуємо initData з HTTP-заголовка (як визначено на фронтенді)
-    init_data = request.headers.get('X-Init-Data') 
+    data = request.get_json()
     
+    # initData тепер знову знаходиться в JSON-тілі
+    init_data = data.get('initData', '') 
     user_id, _ = validate_init_data(init_data)
 
     if not user_id:
-        # Помилка 401, яку ми бачили в логах
-        app.logger.error("InitData missing or invalid in X-Init-Data header.")
+        app.logger.error("InitData missing or invalid in JSON body.")
         return jsonify({"status": "error", "message": "Invalid initData"}), 401
     
-    # 2. Отримуємо файл з FormData (request.files)
-    uploaded_file = request.files.get('photo')
+    # 1. Отримуємо Base64 та MIME-тип
+    base64_data = data.get('image_base64')
+    mime_type = data.get('mime_type', 'image/jpeg') 
     
-    if not uploaded_file:
-        return jsonify({"status": "error", "message": "Missing file (photo)"}), 400
+    if not base64_data:
+        return jsonify({"status": "error", "message": "Missing Base64 image data"}), 400
 
     if not client:
         return jsonify({"status": "error", "message": "Gemini Client not initialized (API Key missing?)"}), 500
 
     try:
-        # 3. Читаємо бінарні дані файлу
-        image_bytes = uploaded_file.read()
+        # 2. Декодуємо Base64 у бінарні байти
+        image_bytes = base64.b64decode(base64_data)
         
-        # 4. Створюємо об'єкт Part для Gemini, використовуючи MIME-тип файлу
+        # 3. Створюємо об'єкт Part для Gemini
         image_part = types.Part.from_bytes(
             data=image_bytes,
-            mime_type=uploaded_file.mimetype 
+            mime_type=mime_type 
         )
 
-        # 5. Підготовка інструкції для Gemini
+        # 4. Підготовка інструкції для Gemini
         prompt = (
             "You are a professional nutritionist. Analyze the image of the food. "
             "Your task is to estimate the calories and name the dish. "
@@ -241,13 +241,13 @@ def process_photo():
             "Translate dish_name and brief_description to Ukrainian."
         )
         
-        # 6. Виклик Gemini Pro Vision
+        # 5. Виклик Gemini Pro Vision
         response = client.models.generate_content(
             model='gemini-2.5-flash', 
             contents=[prompt, image_part]
         )
         
-        # 7. Обробка відповіді
+        # 6. Обробка відповіді
         json_str = response.text.strip().lstrip('```json').rstrip('```')
         
         try:
