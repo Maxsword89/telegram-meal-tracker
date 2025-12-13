@@ -11,16 +11,15 @@ from flask_cors import CORS
 # --- 1. КОНФІГУРАЦІЯ ТА ВАЛІДАЦІЯ TELEGRAM ---
 # --------------------------------------------------------------------------
 
-# Отримання токена з змінних середовища Render
-BOT_TOKEN = os.getenv('BOT_TOKEN')
+# !!! ВИПРАВЛЕНО !!! Тепер читаємо TELEGRAM_BOT_TOKEN, як ви вказали.
+BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
 if not BOT_TOKEN:
-    print("FATAL ERROR: BOT_TOKEN is not set in environment variables.")
+    print("FATAL ERROR: TELEGRAM_BOT_TOKEN is not set in environment variables.")
 
 # Функція валідації initData (фікс проблеми 401 Unauthorized)
 def validate_init_data(init_data: str) -> bool:
     """
     Перевіряє криптографічний підпис Telegram WebApp initData.
-    Вимагає, щоб BOT_TOKEN був встановлений.
     """
     if not BOT_TOKEN:
         return False
@@ -35,6 +34,7 @@ def validate_init_data(init_data: str) -> bool:
             return False
 
         # Сортуємо пари ключ-значення за ключем і об'єднуємо через \n
+        # Це критично для валідації Telegram!
         data_check_string = "\n".join(
             f"{key}={value}"
             for key, value in sorted(parsed_data.items())
@@ -74,58 +74,44 @@ def require_auth(f):
         
         return f(*args, **kwargs)
     
-    # Виправляємо атрибути для Flask
     wrapper.__name__ = f.__name__
     return wrapper
 
 # --------------------------------------------------------------------------
-# --- 2. ЗАГЛУШКИ ДЛЯ ЛОГІКИ БАЗИ ДАНИХ ТА РОЗРАХУНКІВ ---
+# --- 2. ЗАГЛУШКИ ДЛЯ ЛОГІКИ БАЗИ ДАНИХ ТА РОЗРАХУНКІВ (НЕ ЗМІНЮВАЛИСЯ) ---
 # --------------------------------------------------------------------------
 
-# ЗАГЛУШКА: ВАША ЛОГІКА БАЗИ ДАНИХ. Замініть це на реальні виклики БД.
+# ***УВАГА: ЗАМІНІТЬ ЦІ ЗАГЛУШКИ НА ВАШУ РЕАЛЬНУ ЛОГІКУ БД ТА РОЗРАХУНКІВ***
 
 def calculate_target_calories(profile_data: dict) -> int:
-    """Простий розрахунок на основі формули Міффліна-Сан Жеора (для прикладу)"""
-    # ... (ВАШ КОД РОЗРАХУНКУ ТУТ) ...
-    
-    # Приклад: припускаємо 2500 ккал як цільову
-    return 2500
+    """Простий розрахунок цільових калорій."""
+    # (ВАШ КОД РОЗРАХУНКУ ТУТ)
+    return 2500 
 
 def get_user_id_from_initdata(init_data: str) -> str:
     """Витягує Telegram user ID з initData"""
-    # Логіка для парсингу initData для отримання 'id' користувача
-    # Це може бути реалізовано вvalidate_init_data або окремо.
-    # Для спрощення, припускаємо, що ви знаєте, як це зробити.
-    return "tg_user_12345" # ЗАМІНІТЬ НА РЕАЛЬНЕ ЗНАЧЕННЯ
+    # Це може вимагати детального парсингу initData
+    return "tg_user_12345" 
 
 def save_profile_data(profile_data: dict) -> int:
     """Зберігає профіль і повертає цільові калорії"""
-    
-    # Виконуємо розрахунок
     target_kcal = calculate_target_calories(profile_data)
-    
-    # profile_data['user_id'] = get_user_id_from_initdata(profile_data['initData'])
-    # profile_data['target_calories'] = target_kcal
-    
-    # !!! ТУТ МАЄ БУТИ КОД ЗБЕРЕЖЕННЯ ВАШОЇ БД !!!
+    # (КОД ЗБЕРЕЖЕННЯ ВАШОЇ БД ТУТ)
     print(f"Saving profile for user... Target: {target_kcal} kcal") 
-    
     return target_kcal
 
 def get_profile_data(user_id: str) -> dict or None:
     """Отримує профіль користувача з БД"""
-    # !!! ТУТ МАЄ БУТИ КОД ОТРИМАННЯ З ВАШОЇ БД !!!
-    # Якщо профіль існує:
+    # (КОД ОТРИМАННЯ З ВАШОЇ БД ТУТ)
     return {
         'name': 'Іван', 'weight': 75, 'height': 180, 'age': 30, 'gender': 'Чоловіча',
         'activity_level': 'Помірна', 'goal': 'Підтримка', 'water_target': 3000,
         'target_calories': 2200
     }
-    # Якщо профіль не існує: return None
 
 def get_daily_report_data(user_id: str) -> dict:
     """Отримує звіт для дашборду"""
-    # !!! ТУТ МАЄ БУТИ КОД ОТРИМАННЯ ЗВІТУ З ВАШОЇ БД !!!
+    # (КОД ОТРИМАННЯ ЗВІТУ З ВАШОЇ БД ТУТ)
     return {
         'user_name': 'Іван', 'target': 2200, 'consumed': 1500, 'water_target': 3000,
         'water_consumed': 1000, 
@@ -136,7 +122,7 @@ def get_daily_report_data(user_id: str) -> dict:
 
 def process_photo_with_ai(image_base64: str) -> dict:
     """Імітація обробки фото AI"""
-    # !!! ТУТ МАЄ БУТИ КОД ВИКЛИКУ ВАШОГО AI-СЕРВІСУ (GPT-4o, Gemini, тощо) !!!
+    # (КОД ВИКЛИКУ ВАШОГО AI-СЕРВІСУ ТУТ)
     return {
         'name': 'Паста Карбонара', 
         'calories': 750, 
@@ -145,28 +131,24 @@ def process_photo_with_ai(image_base64: str) -> dict:
     
 def save_meal_data(meal_data: dict, user_id: str) -> bool:
     """Зберігає прийом їжі в БД"""
-    # !!! ТУТ МАЄ БУТИ КОД ЗБЕРЕЖЕННЯ ЇЖІ ВАШОЇ БД !!!
+    # (КОД ЗБЕРЕЖЕННЯ ЇЖІ ВАШОЇ БД ТУТ)
     return True
 
 def save_water_data(amount: int, user_id: str) -> int:
     """Зберігає воду і повертає новий загальний об'єм"""
-    # !!! ТУТ МАЄ БУТИ КОД ОНОВЛЕННЯ ВОДИ ВАШОЇ БД !!!
-    return 1250 # Новий об'єм води
+    # (КОД ОНОВЛЕННЯ ВОДИ ВАШОЇ БД ТУТ)
+    return 1250 
 
 # --------------------------------------------------------------------------
-# --- 3. НАЛАШТУВАННЯ FLASK ТА МАРШРУТИ API ---
+# --- 3. НАЛАШТУВАННЯ FLASK ТА МАРШРУТИ API (НЕ ЗМІНЮВАЛИСЯ) ---
 # --------------------------------------------------------------------------
 
 app = Flask(__name__)
-CORS(app) # Дозволяє CORS для роботи Mini App
+CORS(app) 
 
 @app.route('/', methods=['GET'])
 def index():
-    """Проста перевірка стану сервера."""
     return "Telegram Meal Tracker Backend is running!", 200
-
-
-# --- МАРШРУТИ ПРОФІЛЮ ---
 
 @app.route('/api/get_profile', methods=['POST'])
 @require_auth
@@ -183,39 +165,28 @@ def api_get_profile():
 @app.route('/api/save_profile', methods=['POST'])
 @require_auth
 def api_save_profile():
-    # Якщо цей маршрут досягнутий, initData вже валідовано декоратором @require_auth.
     profile_data = request.get_json()
-    
-    # Виклик функції збереження
     target_calories = save_profile_data(profile_data)
     
     return jsonify({'success': True, 'target_calories': target_calories}), 200
-
-
-# --- МАРШРУТИ ДАШБОРДУ ТА ТРЕКІНГУ ---
 
 @app.route('/api/get_daily_report', methods=['POST'])
 @require_auth
 def api_get_daily_report():
     data = request.get_json()
     user_id = get_user_id_from_initdata(data['initData'])
-    
     report_data = get_daily_report_data(user_id)
     return jsonify(report_data), 200
-
 
 @app.route('/api/process_photo', methods=['POST'])
 @require_auth
 def api_process_photo():
     data = request.get_json()
     image_base64 = data.get('image_base64')
-    
     if not image_base64:
         return jsonify({'error': 'Image data is missing'}), 400
-        
     meal_data = process_photo_with_ai(image_base64)
     return jsonify(meal_data), 200
-
 
 @app.route('/api/save_meal', methods=['POST'])
 @require_auth
@@ -223,11 +194,9 @@ def api_save_meal():
     data = request.get_json()
     user_id = get_user_id_from_initdata(data['initData'])
     meal = data.get('meal')
-    
     if save_meal_data(meal, user_id):
         return jsonify({'success': True}), 200
     return jsonify({'error': 'Failed to save meal'}), 500
-
 
 @app.route('/api/save_water', methods=['POST'])
 @require_auth
@@ -235,11 +204,9 @@ def api_save_water():
     data = request.get_json()
     user_id = get_user_id_from_initdata(data['initData'])
     amount = data.get('amount')
-    
     new_amount = save_water_data(amount, user_id)
     return jsonify({'success': True, 'new_amount': new_amount}), 200
 
 
 if __name__ == '__main__':
-    # При запуску локально (для Render ця частина не використовується)
     app.run(debug=True, port=int(os.environ.get('PORT', 5000)))
