@@ -1,4 +1,4 @@
-# --- app.py (ФІНАЛЬНИЙ КОД: ВИПРАВЛЕНА ОБРОБКА JSON ВІД GEMINI) ---
+# --- app.py (ФІНАЛЬНИЙ КОД: AI, БД, ПРОФІЛЬ, ВОДА) ---
 
 import os
 import json
@@ -7,6 +7,7 @@ import base64
 from datetime import datetime
 from urllib.parse import unquote
 from pytz import timezone
+import random # Додано для вибору поради
 
 # Бібліотеки Gemini AI
 from google import genai
@@ -24,7 +25,6 @@ from psycopg2 import pool, extras
 # --- КОНФІГУРАЦІЯ ---
 
 app = Flask(__name__)
-# Дозволяємо CORS для усіх джерел, щоб Mini App міг звертатися
 CORS(app) 
 
 SERVER_TZ = timezone('Europe/Kiev')
@@ -46,11 +46,20 @@ else:
 
 logging.basicConfig(level=logging.INFO)
 
+# --- СПИСОК ЩОДЕННИХ ПОРАД ---
+DAILY_TIPS = [
+    "Не забувайте пити чисту воду між прийомами їжі. Гідратація — ключ до енергії.",
+    "Сьогодні зосередьтеся на включенні свіжих сезонних овочів у свій раціон. Це джерело вітамінів!",
+    "Пройдіть 1000 додаткових кроків сьогодні для покращення травлення та настрою.",
+    "Спробуйте замінити оброблені солодощі на свіжі або заморожені фрукти після обіду.",
+    "Плануйте свій наступний прийом їжі заздалегідь, щоб уникнути нездорових перекусів.",
+]
+
 # --- ПУЛ З'ЄДНАНЬ З БАЗОЮ ДАНИХ ---
 try:
     postgreSQL_pool = psycopg2.pool.SimpleConnectionPool(
-        1,  # minconn
-        20, # maxconn
+        1, 
+        20,
         DATABASE_URL,
         sslmode='require' 
     )
@@ -114,6 +123,7 @@ def get_daily_report():
         today_start = now_tz.replace(hour=0, minute=0, second=0, microsecond=0)
         today_end = now_tz.replace(hour=23, minute=59, second=59, microsecond=999999)
 
+        # 1. Вибірка прийомів їжі
         cur.execute("""
             SELECT 
                 meal_name, 
@@ -133,28 +143,56 @@ def get_daily_report():
             meals.append({"time": meal_time, "name": name, "calories": calories})
             total_consumed += calories
 
+        # 2. Вибірка профілю
         cur.execute("SELECT weight_kg, height_cm, activity_level FROM user_profile WHERE user_id = %s", (user_id,))
         profile_data = cur.fetchone()
         
-        # TODO: Додайте логіку розрахунку цільових калорій тут
         target_calories = 2000 
-        if profile_data:
-             pass 
+        water_target_ml = 2500 
+
+        if profile_data and profile_data[0]: # Якщо вага існує
+            weight_kg = profile_data[0]
+            # Приклад: Розрахунок норми води (30 мл на 1 кг ваги)
+            water_target_ml = int(weight_kg * 30)
+
+            # TODO: Додайте тут логіку розрахунку цільових калорій на основі профілю (TDEE/BMR)
+            # target_calories = calculate_tdee(...) 
+
+
+        # 3. Вибірка спожитої води
+        cur.execute("""
+            SELECT COALESCE(SUM(volume_ml), 0) 
+            FROM water_intake 
+            WHERE user_id = %s 
+              AND timestamp >= %s 
+              AND timestamp <= %s;
+        """, (user_id, today_start, today_end))
+        total_water_consumed = cur.fetchone()[0]
+
+        # 4. Вибір поради на день (на основі дня року)
+        day_of_year = now_tz.timetuple().tm_yday
+        tip_index = day_of_year % len(DAILY_TIPS)
+        daily_tip = DAILY_TIPS[tip_index]
 
         return jsonify({
             "target": target_calories,
             "consumed": total_consumed,
             "date": now_tz.strftime('%d %B %Y'),
+            "water_consumed": total_water_consumed,
+            "water_target": water_target_ml,
+            "daily_tip": daily_tip,
             "meals": meals
         }), 200
 
     except Exception as e:
         app.logger.error(f"Error fetching daily report for user {user_id}: {e}")
-        # Повертаємо безпечний порожній набір даних у разі помилки
         return jsonify({
             "target": 2000,
             "consumed": 0,
             "date": datetime.now(SERVER_TZ).strftime('%d %B %Y'),
+            "water_consumed": 0,
+            "water_target": 2500,
+            "daily_tip": "Не вдалося завантажити пораду. Проблема на сервері.",
             "meals": []
         }), 200
     finally:
@@ -162,7 +200,39 @@ def get_daily_report():
             release_db_connection(conn)
 
 
-# --- 2. РОУТ: ЗБЕРЕЖЕННЯ ПРИЙОМУ ЇЖІ ---
+# --- 2. РОУТ: ДОДАВАННЯ ВОДИ ---
+@app.route('/api/add_water', methods=['POST'])
+@cross_origin()
+def add_water():
+    data = request.get_json()
+    init_data = data.get('initData', '')
+    volume_ml = data.get('volume_ml', 250) 
+    
+    user_id, _ = validate_init_data(init_data)
+    
+    if not user_id:
+        return jsonify({"status": "error", "message": "Invalid initData"}), 401
+    
+    conn = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute(
+            "INSERT INTO water_intake (user_id, volume_ml) VALUES (%s, %s)",
+            (user_id, volume_ml)
+        )
+        conn.commit()
+        app.logger.info(f"WATER ADDED: User {user_id}, Volume: {volume_ml} ml")
+        return jsonify({"status": "success"}), 200
+    except Exception as e:
+        app.logger.error(f"Error adding water for user {user_id}: {e}")
+        return jsonify({"status": "error", "message": "Internal error"}), 500
+    finally:
+        if conn:
+            release_db_connection(conn)
+
+
+# --- 3. РОУТ: ЗБЕРЕЖЕННЯ ПРИЙОМУ ЇЖІ ---
 @app.route('/api/save_meal', methods=['POST'])
 @cross_origin()
 def save_meal():
@@ -200,7 +270,7 @@ def save_meal():
             release_db_connection(conn)
 
 
-# --- 3. РОУТ: ОБРОБКА ФОТО AI (GEMINI VISION) - ПРИЙМАЄ BASE64 В JSON ТІЛІ ---
+# --- 4. РОУТ: ОБРОБКА ФОТО AI (GEMINI VISION) ---
 @app.route('/api/process_photo', methods=['POST'])
 @cross_origin()
 def process_photo():
@@ -210,10 +280,8 @@ def process_photo():
     user_id, _ = validate_init_data(init_data)
 
     if not user_id:
-        app.logger.error("InitData missing or invalid in JSON body.")
         return jsonify({"status": "error", "message": "Invalid initData"}), 401
     
-    # 1. Отримуємо Base64 та MIME-тип
     base64_data = data.get('image_base64')
     mime_type = data.get('mime_type', 'image/jpeg') 
     
@@ -224,16 +292,13 @@ def process_photo():
         return jsonify({"status": "error", "message": "Gemini Client not initialized (API Key missing?)"}), 500
 
     try:
-        # 2. Декодуємо Base64 у бінарні байти
         image_bytes = base64.b64decode(base64_data)
         
-        # 3. Створюємо об'єкт Part для Gemini
         image_part = types.Part.from_bytes(
             data=image_bytes,
             mime_type=mime_type 
         )
 
-        # 4. Підготовка інструкції для Gemini
         prompt = (
             "You are a professional nutritionist. Analyze the image of the food. "
             "Your task is to estimate the calories and name the dish. "
@@ -243,19 +308,17 @@ def process_photo():
             "Translate dish_name and brief_description to Ukrainian."
         )
         
-        # 5. Виклик Gemini Pro Vision
         response = client.models.generate_content(
             model='gemini-2.5-flash', 
             contents=[prompt, image_part]
         )
         
-        # 6. Обробка відповіді: очищення від ```json...```
+        # Обробка відповіді: очищення від ```json...```
         json_str = response.text.strip().lstrip('```json').rstrip('```').strip() 
 
         try:
             meal_data = json.loads(json_str)
         except json.JSONDecodeError:
-            # !!! ВИПРАВЛЕННЯ: Повертаємо 500 у разі помилки декодування JSON, логуючи сиру відповідь !!!
             app.logger.error(f"Gemini returned non-JSON response. Raw text: {response.text}")
             return jsonify({
                 "status": "error", 
@@ -280,49 +343,39 @@ def process_photo():
         return jsonify({"status": "error", "message": f"AI processing failed: {e}"}), 500
 
 
-# --- 4. РОУТ: ЗБЕРЕЖЕННЯ ПАРАМЕТРІВ КОРИСТУВАЧА ---
+# --- 5. РОУТ: ЗБЕРЕЖЕННЯ ПАРАМЕТРІВ КОРИСТУВАЧА / ПЕРЕВІРКА ПРОФІЛЮ ---
+
 @app.route('/api/save_profile', methods=['POST'])
 @cross_origin()
 def save_user_profile():
     data = request.get_json()
     init_data = data.get('initData', '')
     profile_data = data.get('profile', {})
-
     user_id, username = validate_init_data(init_data)
-
     if not user_id:
         return jsonify({"status": "error", "message": "Invalid initData"}), 401
-
+    
     conn = None
     try:
         weight = profile_data.get('weight')
         height = profile_data.get('height')
         activity = profile_data.get('activity')
         night_shifts = profile_data.get('night_shifts', False)
-        
         if not all([weight, height, activity]):
              return jsonify({"status": "error", "message": "Missing required profile fields"}), 400
 
         conn = get_db_connection()
         cur = conn.cursor()
-
-        # UPSERT (INSERT OR UPDATE)
         cur.execute("""
             INSERT INTO user_profile (user_id, username, weight_kg, height_cm, activity_level, night_shifts, last_updated)
             VALUES (%s, %s, %s, %s, %s, %s, NOW())
             ON CONFLICT (user_id) DO UPDATE 
-            SET username = EXCLUDED.username,
-                weight_kg = EXCLUDED.weight_kg,
-                height_cm = EXCLUDED.height_cm,
-                activity_level = EXCLUDED.activity_level,
-                night_shifts = EXCLUDED.night_shifts,
-                last_updated = NOW();
+            SET username = EXCLUDED.username, weight_kg = EXCLUDED.weight_kg,
+                height_cm = EXCLUDED.height_cm, activity_level = EXCLUDED.activity_level,
+                night_shifts = EXCLUDED.night_shifts, last_updated = NOW();
         """, (user_id, username, weight, height, activity, night_shifts))
-        
         conn.commit()
-        app.logger.info(f"PROFILE SAVED: User {user_id} saved profile data.")
         return jsonify({"status": "success", "message": "Profile saved successfully"}), 200
-
     except Exception as e:
         app.logger.error(f"Error saving profile for user {user_id}: {e}")
         return jsonify({"status": "error", "message": "Internal server error"}), 500
@@ -330,44 +383,26 @@ def save_user_profile():
         if conn:
             release_db_connection(conn)
 
-
-# --- 5. РОУТ: ПЕРЕВІРКА ІСНУВАННЯ ПРОФІЛЮ ---
 @app.route('/api/get_profile', methods=['POST'])
 @cross_origin()
 def get_user_profile():
     data = request.get_json()
     init_data = data.get('initData', '')
     user_id, _ = validate_init_data(init_data)
-
     if not user_id:
         return jsonify({"status": "error", "message": "Invalid initData"}), 401
-
     conn = None
     try:
         conn = get_db_connection()
         cur = conn.cursor()
-        
         cur.execute("SELECT weight_kg, height_cm, activity_level, night_shifts FROM user_profile WHERE user_id = %s", (user_id,))
         profile_record = cur.fetchone()
         
         if profile_record:
             weight, height, activity, night_shifts = profile_record
-            return jsonify({
-                "status": "success",
-                "exists": True,
-                "data": {
-                    "weight": weight,
-                    "height": height,
-                    "activity": activity,
-                    "night_shifts": night_shifts,
-                }
-            }), 200
+            return jsonify({"status": "success", "exists": True, "data": {"weight": weight, "height": height, "activity": activity, "night_shifts": night_shifts,}}), 200
         else:
-            return jsonify({
-                "status": "success",
-                "exists": False
-            }), 200
-
+            return jsonify({"status": "success", "exists": False}), 200
     except Exception as e:
         app.logger.error(f"Error checking profile for user {user_id}: {e}")
         return jsonify({"status": "error", "message": "Internal server error"}), 500
@@ -377,5 +412,4 @@ def get_user_profile():
 
 
 if __name__ == '__main__':
-    # Використовуйте Gunicorn для продакшн, Flask для локального тестування
     app.run(host='0.0.0.0', port=5000)
