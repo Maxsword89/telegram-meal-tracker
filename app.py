@@ -1,9 +1,14 @@
 import os
 import json
 import logging
+import base64
 from datetime import datetime
 from urllib.parse import unquote
 from pytz import timezone
+
+# Бібліотеки Gemini AI
+from google import genai
+from google.genai import types
 
 # Бібліотеки Flask та Cors
 from flask import Flask, request, jsonify
@@ -16,8 +21,6 @@ from psycopg2 import pool, extras
 # --- КОНФІГУРАЦІЯ ---
 
 app = Flask(__name__)
-
-# Дозволяємо CORS для усіх джерел, якщо ви використовуєте Render
 CORS(app) 
 
 # Встановлюємо часовий пояс для коректної роботи з датами
@@ -25,12 +28,23 @@ SERVER_TZ = timezone('Europe/Kiev')
 
 # Отримання змінних середовища
 DATABASE_URL = os.environ.get('DATABASE_URL')
-# BOT_TOKEN = os.environ.get('BOT_TOKEN') # Поки не використовується для hash-валідації
+GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY') # НОВИЙ КЛЮЧ
+# BOT_TOKEN = os.environ.get('BOT_TOKEN') 
+
+# Налаштування Gemini AI Client
+if GEMINI_API_KEY:
+    try:
+        # Ініціалізуємо Gemini Client
+        client = genai.Client(api_key=GEMINI_API_KEY)
+    except Exception as e:
+        app.logger.error(f"Error initializing Gemini client: {e}")
+else:
+    app.logger.error("GEMINI_API_KEY is not set.")
 
 # Налаштування логування
 logging.basicConfig(level=logging.INFO)
 
-# --- ПУЛ З'ЄДНАНЬ З БАЗОЮ ДАНИХ ---
+# --- ПУЛ З'ЄДНАНЬ З БАЗОЮ ДАНИХ (БЕЗ ЗМІН) ---
 try:
     postgreSQL_pool = psycopg2.pool.SimpleConnectionPool(
         1,  # minconn
@@ -40,10 +54,6 @@ try:
     app.logger.info("Connection pool created successfully")
 except Exception as e:
     app.logger.error(f"Error connecting to PostgreSQL database: {e}")
-    # Якщо підключення до БД не вдалося, додаток не може працювати
-    # У виробничому середовищі тут можна викликати sys.exit()
-    # Але для Render ми просто будемо обробляти помилки в роутах.
-
 
 def get_db_connection():
     """Отримує з'єднання з пулу."""
@@ -54,18 +64,13 @@ def release_db_connection(conn):
     postgreSQL_pool.putconn(conn)
 
 
-# --- ФУНКЦІЯ ВАЛІДАЦІЇ TELEGRAM INITDATA ---
+# --- ФУНКЦІЯ ВАЛІДАЦІЇ TELEGRAM INITDATA (БЕЗ ЗМІН) ---
 def validate_init_data(init_data, secret_key=None, hash_validation=False):
     """
     Розбирає initData для отримання user_id та username.
-    
-    SECURITY CHECK: HASH VALIDATION IS DISABLED.
-    Тимчасово використовується лише для отримання user_id.
     """
     try:
-        # initData - це рядок, закодований як URL
         decoded_data = unquote(init_data)
-        
         data_parts = decoded_data.split('&')
         user_info = None
         user_id = None
@@ -73,7 +78,6 @@ def validate_init_data(init_data, secret_key=None, hash_validation=False):
 
         for part in data_parts:
             if part.startswith('user='):
-                # Частина 'user={"id":123,"first_name":"...","username":"..."}'
                 user_json_str = part[5:]
                 user_info = json.loads(user_json_str)
                 user_id = user_info.get('id')
@@ -90,7 +94,7 @@ def validate_init_data(init_data, secret_key=None, hash_validation=False):
         return None, None
 
 
-# --- 1. РОУТ: ОТРИМАННЯ ЗВІТУ (ДАШБОРД) ---
+# --- 1. РОУТ: ОТРИМАННЯ ЗВІТУ (БЕЗ ЗМІН) ---
 @app.route('/api/get_daily_report', methods=['POST'])
 @cross_origin()
 def get_daily_report():
@@ -99,7 +103,6 @@ def get_daily_report():
     user_id, _ = validate_init_data(init_data, secret_key=None, hash_validation=False)
 
     if not user_id:
-        # У разі невдалої валідації повертаємо помилку
         return jsonify({"status": "error", "message": "Invalid initData"}), 401
 
     conn = None
@@ -126,15 +129,12 @@ def get_daily_report():
         """, (user_id, today_start, today_end))
         meals_records = cur.fetchall()
         
-        # 3. Обробка результатів та розрахунок загальних калорій
         meals = []
         total_consumed = 0
         for name, calories, meal_time in meals_records:
-            # Тут використовуємо реальну назву страви з бази даних
             meals.append({"time": meal_time, "name": name, "calories": calories})
             total_consumed += calories
 
-        # 4. Формування фінального звіту
         target_calories = 2000 # TODO: Використовувати ціль з user_profile
         
         return jsonify({
@@ -146,7 +146,6 @@ def get_daily_report():
 
     except Exception as e:
         app.logger.error(f"Error fetching daily report for user {user_id}: {e}")
-        # Повертаємо порожній звіт у разі помилки БД
         return jsonify({
             "target": 2000,
             "consumed": 0,
@@ -158,7 +157,7 @@ def get_daily_report():
             release_db_connection(conn)
 
 
-# --- 2. РОУТ: ЗБЕРЕЖЕННЯ ПРИЙОМУ ЇЖІ ---
+# --- 2. РОУТ: ЗБЕРЕЖЕННЯ ПРИЙОМУ ЇЖІ (БЕЗ ЗМІН) ---
 @app.route('/api/save_meal', methods=['POST'])
 @cross_origin()
 def save_meal():
@@ -196,7 +195,7 @@ def save_meal():
             release_db_connection(conn)
 
 
-# --- 3. РОУТ: ІМІТАЦІЯ ОБРОБКИ ФОТО AI ---
+# --- 3. РОУТ: ОБРОБКА ФОТО AI (ОНОВЛЕНО: ВИКОРИСТАННЯ GEMINI) ---
 @app.route('/api/process_photo', methods=['POST'])
 @cross_origin()
 def process_photo():
@@ -207,18 +206,68 @@ def process_photo():
     if not user_id:
         return jsonify({"status": "error", "message": "Invalid initData"}), 401
     
-    # !!! ТИМЧАСОВА ЗАГЛУШКА !!!
-    # У реальному проекті тут буде логіка виклику AI Vision API.
+    # Отримуємо Base64 рядок з фронтенду
+    image_base64 = data.get('image_base64', None)
     
-    # Використовуємо ID користувача для унікальності заглушки
-    return jsonify({
-        "name": f"Розпізнано (ID: {user_id})",
-        "calories": 450, 
-        "description": "Це тестовий результат, імітація розпізнавання: курка гриль та трохи овочів."
-    }), 200
+    if not image_base64:
+        return jsonify({"status": "error", "message": "Missing image_base64 data"}), 400
+
+    if not client:
+        return jsonify({"status": "error", "message": "Gemini Client not initialized (API Key missing?)"}), 500
+
+    try:
+        # 1. Декодуємо Base64 у бінарні дані
+        image_bytes = base64.b64decode(image_base64)
+        
+        # 2. Створюємо об'єкт Part для Gemini
+        image_part = types.Part.from_bytes(
+            data=image_bytes,
+            mime_type='image/jpeg' # Припускаємо, що ми надсилаємо JPG
+        )
+
+        # 3. Підготовка інструкції для Gemini
+        prompt = (
+            "You are a professional nutritionist. Analyze the image of the food. "
+            "Your task is to estimate the calories and name the dish. "
+            "You MUST ONLY return a single JSON object in the following format: "
+            "{'name': 'dish_name', 'calories': estimated_calories_integer, 'description': 'brief_description_in_ukrainian'} "
+            "Estimate the calories for a standard portion shown in the photo. "
+            "Translate dish_name and brief_description to Ukrainian."
+        )
+        
+        # 4. Виклик Gemini Pro Vision
+        response = client.models.generate_content(
+            model='gemini-2.5-flash', # Використовуємо Flash, оскільки він швидкий та підтримує Vision
+            contents=[prompt, image_part]
+        )
+        
+        # 5. Обробка відповіді (Gemini часто додає зайві пробіли або markdown)
+        json_str = response.text.strip().lstrip('```json').rstrip('```')
+        
+        try:
+            meal_data = json.loads(json_str)
+        except json.JSONDecodeError:
+            app.logger.error(f"Gemini returned non-JSON response: {json_str}")
+            return jsonify({"status": "error", "message": "AI returned invalid format."}), 500
+
+        # Перевірка наявності необхідних полів
+        if not all(k in meal_data for k in ['name', 'calories', 'description']):
+            return jsonify({"status": "error", "message": "AI result is missing required fields."}), 500
+
+        # Повертаємо дані у форматі, який очікує фронтенд
+        return jsonify({
+            "name": meal_data['name'],
+            "calories": int(meal_data['calories']),
+            "description": meal_data['description']
+        }), 200
+
+    except Exception as e:
+        app.logger.error(f"Error processing photo with Gemini: {e}")
+        # Повертаємо більш інформативну помилку
+        return jsonify({"status": "error", "message": f"AI processing failed: {e}"}), 500
 
 
-# --- 4. НОВИЙ РОУТ: ЗБЕРЕЖЕННЯ ПАРАМЕТРІВ КОРИСТУВАЧА ---
+# --- 4. РОУТ: ЗБЕРЕЖЕННЯ ПАРАМЕТРІВ КОРИСТУВАЧА (БЕЗ ЗМІН) ---
 @app.route('/api/save_profile', methods=['POST'])
 @cross_origin()
 def save_user_profile():
@@ -269,7 +318,7 @@ def save_user_profile():
             release_db_connection(conn)
 
 
-# --- 5. НОВИЙ РОУТ: ПЕРЕВІРКА ІСНУВАННЯ ПРОФІЛЮ ---
+# --- 5. РОУТ: ПЕРЕВІРКА ІСНУВАННЯ ПРОФІЛЮ (БЕЗ ЗМІН) ---
 @app.route('/api/get_profile', methods=['POST'])
 @cross_origin()
 def get_user_profile():
@@ -289,7 +338,6 @@ def get_user_profile():
         profile_record = cur.fetchone()
         
         if profile_record:
-            # Якщо профіль знайдено, повертаємо його
             weight, height, activity, night_shifts = profile_record
             return jsonify({
                 "status": "success",
@@ -302,7 +350,6 @@ def get_user_profile():
                 }
             }), 200
         else:
-            # Якщо профіль НЕ знайдено
             return jsonify({
                 "status": "success",
                 "exists": False
@@ -317,5 +364,4 @@ def get_user_profile():
 
 
 if __name__ == '__main__':
-    # На Render це не виконується, Gunicorn запускає додаток
     app.run(host='0.0.0.0', port=5000)
