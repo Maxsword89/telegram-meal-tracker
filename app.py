@@ -1,302 +1,245 @@
-from flask import Flask, request, jsonify, send_from_directory
-from flask_cors import CORS
 import os
-import time
-import sqlite3
-from datetime import datetime
+import json
+import hashlib
+import hmac
+from urllib.parse import parse_qsl
 
-# --- КОНФІГУРАЦІЯ FLASK ТА БД ---
-app = Flask(__name__, static_folder='.')
-CORS(app) 
+from flask import Flask, request, jsonify
+from flask_cors import CORS
 
-# Шлях до файлу бази даних SQLite
-DATABASE = 'app_tracker.db'
+# --------------------------------------------------------------------------
+# --- 1. КОНФІГУРАЦІЯ ТА ВАЛІДАЦІЯ TELEGRAM ---
+# --------------------------------------------------------------------------
 
-# Базовий користувач (для імітації авторизації)
-MOCK_USER_ID = "123456789" 
-MOCK_USER_NAME = "Макс"
+# Отримання токена з змінних середовища Render
+BOT_TOKEN = os.getenv('BOT_TOKEN')
+if not BOT_TOKEN:
+    print("FATAL ERROR: BOT_TOKEN is not set in environment variables.")
 
-# --- ФУНКЦІЇ РОБОТИ З БАЗОЮ ДАНИХ (SQLite) ---
-
-def get_db_connection():
-    """Створює та повертає з'єднання з БД."""
-    conn = sqlite3.connect(DATABASE)
-    conn.row_factory = sqlite3.Row 
-    return conn
-
-def init_db():
-    """Ініціалізує базу даних: створює таблиці, якщо вони не існують."""
-    with app.app_context():
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        
-        # Таблиця для прийомів води
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS water_intake (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id TEXT NOT NULL,
-                amount INTEGER NOT NULL,
-                timestamp TEXT NOT NULL
-            )
-        """)
-        
-        # Таблиця для профілю (ВКЛЮЧАЄ ВСІ ПОЛЯ ДЛЯ РОЗРАХУНКУ КАЛОРІЙ)
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS user_profile (
-                user_id TEXT PRIMARY KEY,
-                name TEXT,
-                weight REAL,
-                height INTEGER,
-                age INTEGER,
-                gender TEXT,
-                activity_level TEXT,
-                goal TEXT,
-                target_calories INTEGER, 
-                water_target INTEGER
-            )
-        """)
-        
-        conn.commit()
-        conn.close()
-
-init_db()
-
-# --- АЛГОРИТМ РОЗРАХУНКУ (ФОРМУЛА МІФФЛІНА-САН-ЖЕОРА) ---
-
-def calculate_target_calories(weight, height, age, gender, activity_level, goal):
+# Функція валідації initData (фікс проблеми 401 Unauthorized)
+def validate_init_data(init_data: str) -> bool:
     """
-    Виконує повний розрахунок BMR, TDEE та цільової норми калорій.
+    Перевіряє криптографічний підпис Telegram WebApp initData.
+    Вимагає, щоб BOT_TOKEN був встановлений.
     """
-    
-    # 1. Розрахунок BMR (Міффлін-Сан-Жеор)
-    if gender == "Чоловіча":
-        bmr = (10 * weight) + (6.25 * height) - (5 * age) + 5
-    else: # Жіноча
-        bmr = (10 * weight) + (6.25 * height) - (5 * age) - 161
-        
-    # 2. Визначення Коефіцієнта Активності (AM)
-    activity_map = {
-        "Мінімальна": 1.2,
-        "Легка": 1.375,
-        "Помірна": 1.55,
-        "Висока": 1.725,
-        "Екстремальна": 1.9
-    }
-    am = activity_map.get(activity_level, 1.2)
-    
-    # 3. Розрахунок TDEE
-    tdee = bmr * am
-    
-    # 4. Коригування під Мету
-    if goal == "Схуднення":
-        target_kcal = tdee * 0.85
-    elif goal == "Набір маси":
-        target_kcal = tdee * 1.15
-    else: # Підтримка ваги
-        target_kcal = tdee
-        
-    return round(target_kcal)
-# -------------------------------------------------------------
+    if not BOT_TOKEN:
+        return False
 
-# --- ДОПОМІЖНІ ФУНКЦІЇ ---
-
-def authenticate_user(init_data):
-    if init_data and MOCK_USER_ID in init_data:
-        return MOCK_USER_ID
-    return None
-
-def get_today_water_intake(user_id):
-    conn = get_db_connection()
-    today_start = datetime.now().strftime("%Y-%m-%d 00:00:00")
-    query = """
-        SELECT SUM(amount) AS total_water 
-        FROM water_intake 
-        WHERE user_id = ? AND timestamp >= ?
-    """
-    result = conn.execute(query, (user_id, today_start)).fetchone()
-    conn.close()
-    return result['total_water'] if result and result['total_water'] else 0
-
-def get_user_profile(user_id):
-    conn = get_db_connection()
-    profile = conn.execute("SELECT * FROM user_profile WHERE user_id = ?", (user_id,)).fetchone()
-    conn.close()
-    return profile
-
-# ІМІТАЦІЯ ДАНИХ (для прийомів їжі)
-MOCK_MEALS = [] 
-MOCK_TOTAL_CALORIES = 0 
-# -------------------------------------------------------------
-
-
-# --- РОУТИ API ---
-
-@app.route('/profile.html') 
-def serve_profile():
-    return send_from_directory(app.static_folder, 'profile.html')
-
-@app.route('/')
-def serve_index():
-    return send_from_directory(app.static_folder, 'index.html')
-
-@app.route('/<path:filename>')
-def serve_static(filename):
-    return send_from_directory(app.static_folder, filename)
-
-@app.route('/api/get_profile', methods=['POST'])
-def get_profile():
-    data = request.json
-    user_id = authenticate_user(data.get('initData'))
-    
-    if user_id:
-        profile = get_user_profile(user_id)
-        
-        if profile:
-            profile_data = dict(profile)
-            return jsonify({"exists": True, "data": profile_data}), 200
-        
-        return jsonify({"exists": False}), 200
-    
-    return jsonify({"exists": False}), 200
-
-@app.route('/api/save_profile', methods=['POST'])
-def save_profile():
-    data = request.json
-    user_id = authenticate_user(data.get('initData'))
-    
-    if not user_id:
-        return jsonify({"error": "Unauthorized"}), 401
-    
     try:
-        # Зчитування та валідація вхідних даних
-        name = data.get('name', MOCK_USER_NAME)
-        weight = float(data.get('weight', 0))
-        height = int(data.get('height', 0))
-        age = int(data.get('age', 0))
-        gender = data.get('gender', 'Чоловіча')
-        activity = data.get('activity_level', 'Мінімальна') 
-        goal = data.get('goal', 'Підтримка')
-        water_target = int(data.get('water_target', 2500)) 
+        # Розділяємо initData на пари ключ-значення
+        parsed_data = dict(parse_qsl(init_data))
+        hash_to_check = parsed_data.pop('hash', None)
         
-        if not (weight > 0 and height > 0 and age > 0):
-             return jsonify({"error": "Invalid profile data"}), 400
+        if not hash_to_check:
+            print("Validation failed: Hash not found in initData.")
+            return False
 
-        # ВИКОНАННЯ РОЗРАХУНКУ
-        target_calories = calculate_target_calories(weight, height, age, gender, activity, goal)
-        
-        # Збереження даних
-        conn = get_db_connection()
-        conn.execute(
-            """INSERT OR REPLACE INTO user_profile 
-               (user_id, name, weight, height, age, gender, activity_level, goal, target_calories, water_target) 
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-            (user_id, name, weight, height, age, gender, activity, goal, target_calories, water_target)
+        # Сортуємо пари ключ-значення за ключем і об'єднуємо через \n
+        data_check_string = "\n".join(
+            f"{key}={value}"
+            for key, value in sorted(parsed_data.items())
         )
-        conn.commit()
-        conn.close()
-        
-        return jsonify({"success": True, "target_calories": target_calories}), 200
+
+        # 1. Створення секретного ключа (HMAC SHA256 з ключем 'WebAppData')
+        secret_key = hmac.new(
+            key=b'WebAppData',
+            msg=BOT_TOKEN.encode('utf-8'),
+            digestmod=hashlib.sha256
+        ).digest()
+
+        # 2. Обчислення хешу від data_check_string
+        calculated_hash = hmac.new(
+            key=secret_key,
+            msg=data_check_string.encode('utf-8'),
+            digestmod=hashlib.sha256
+        ).hexdigest()
+
+        # 3. Порівняння
+        return calculated_hash == hash_to_check
         
     except Exception as e:
-        app.logger.error(f"Error saving profile and calculating calories: {e}")
-        return jsonify({"error": "Processing error"}), 500
+        print(f"Validation error: {e}")
+        return False
 
+# Middleware для перевірки авторизації
+def require_auth(f):
+    """Декоратор, що вимагає валідації initData перед виконанням маршруту."""
+    def wrapper(*args, **kwargs):
+        data = request.get_json()
+        init_data = data.get('initData')
+        
+        if not validate_init_data(init_data):
+            # Повертаємо 401, якщо валідація не пройдена
+            return jsonify({'error': 'Unauthorized'}), 401
+        
+        return f(*args, **kwargs)
+    
+    # Виправляємо атрибути для Flask
+    wrapper.__name__ = f.__name__
+    return wrapper
 
-@app.route('/api/get_daily_report', methods=['POST'])
-def get_daily_report():
-    data = request.json
-    user_id = authenticate_user(data.get('initData'))
-    
-    if not user_id:
-        return jsonify({"error": "Unauthorized"}), 401
-    
-    profile = get_user_profile(user_id)
-    
-    # Використовуємо дані з профілю, або значення за замовчуванням
-    target_kcal = profile['target_calories'] if profile and profile['target_calories'] else 2000
-    target_water = profile['water_target'] if profile and profile['water_target'] else 2500
-    user_name = profile['name'] if profile and profile['name'] else MOCK_USER_NAME
+# --------------------------------------------------------------------------
+# --- 2. ЗАГЛУШКИ ДЛЯ ЛОГІКИ БАЗИ ДАНИХ ТА РОЗРАХУНКІВ ---
+# --------------------------------------------------------------------------
 
-    # Отримання даних про воду з SQLite
-    water_consumed_real = get_today_water_intake(user_id)
+# ЗАГЛУШКА: ВАША ЛОГІКА БАЗИ ДАНИХ. Замініть це на реальні виклики БД.
+
+def calculate_target_calories(profile_data: dict) -> int:
+    """Простий розрахунок на основі формули Міффліна-Сан Жеора (для прикладу)"""
+    # ... (ВАШ КОД РОЗРАХУНКУ ТУТ) ...
     
-    report_data = {
-        "user_name": user_name,
-        "target": target_kcal,
-        "consumed": MOCK_TOTAL_CALORIES, # Імітація
-        "meals": MOCK_MEALS, # Імітація
-        "water_target": target_water,
-        "water_consumed": water_consumed_real, 
-        "date": datetime.now().strftime("%d %B, %Y")
+    # Приклад: припускаємо 2500 ккал як цільову
+    return 2500
+
+def get_user_id_from_initdata(init_data: str) -> str:
+    """Витягує Telegram user ID з initData"""
+    # Логіка для парсингу initData для отримання 'id' користувача
+    # Це може бути реалізовано вvalidate_init_data або окремо.
+    # Для спрощення, припускаємо, що ви знаєте, як це зробити.
+    return "tg_user_12345" # ЗАМІНІТЬ НА РЕАЛЬНЕ ЗНАЧЕННЯ
+
+def save_profile_data(profile_data: dict) -> int:
+    """Зберігає профіль і повертає цільові калорії"""
+    
+    # Виконуємо розрахунок
+    target_kcal = calculate_target_calories(profile_data)
+    
+    # profile_data['user_id'] = get_user_id_from_initdata(profile_data['initData'])
+    # profile_data['target_calories'] = target_kcal
+    
+    # !!! ТУТ МАЄ БУТИ КОД ЗБЕРЕЖЕННЯ ВАШОЇ БД !!!
+    print(f"Saving profile for user... Target: {target_kcal} kcal") 
+    
+    return target_kcal
+
+def get_profile_data(user_id: str) -> dict or None:
+    """Отримує профіль користувача з БД"""
+    # !!! ТУТ МАЄ БУТИ КОД ОТРИМАННЯ З ВАШОЇ БД !!!
+    # Якщо профіль існує:
+    return {
+        'name': 'Іван', 'weight': 75, 'height': 180, 'age': 30, 'gender': 'Чоловіча',
+        'activity_level': 'Помірна', 'goal': 'Підтримка', 'water_target': 3000,
+        'target_calories': 2200
+    }
+    # Якщо профіль не існує: return None
+
+def get_daily_report_data(user_id: str) -> dict:
+    """Отримує звіт для дашборду"""
+    # !!! ТУТ МАЄ БУТИ КОД ОТРИМАННЯ ЗВІТУ З ВАШОЇ БД !!!
+    return {
+        'user_name': 'Іван', 'target': 2200, 'consumed': 1500, 'water_target': 3000,
+        'water_consumed': 1000, 
+        'date': '13 грудня', 
+        'meals': [{'name': 'Сніданок', 'calories': 600, 'time': '08:00'}, 
+                  {'name': 'Обід', 'calories': 900, 'time': '13:30'}]
+    }
+
+def process_photo_with_ai(image_base64: str) -> dict:
+    """Імітація обробки фото AI"""
+    # !!! ТУТ МАЄ БУТИ КОД ВИКЛИКУ ВАШОГО AI-СЕРВІСУ (GPT-4o, Gemini, тощо) !!!
+    return {
+        'name': 'Паста Карбонара', 
+        'calories': 750, 
+        'description': 'Порція приблизно 300 грам. Високий вміст жирів та вуглеводів.'
     }
     
+def save_meal_data(meal_data: dict, user_id: str) -> bool:
+    """Зберігає прийом їжі в БД"""
+    # !!! ТУТ МАЄ БУТИ КОД ЗБЕРЕЖЕННЯ ЇЖІ ВАШОЇ БД !!!
+    return True
+
+def save_water_data(amount: int, user_id: str) -> int:
+    """Зберігає воду і повертає новий загальний об'єм"""
+    # !!! ТУТ МАЄ БУТИ КОД ОНОВЛЕННЯ ВОДИ ВАШОЇ БД !!!
+    return 1250 # Новий об'єм води
+
+# --------------------------------------------------------------------------
+# --- 3. НАЛАШТУВАННЯ FLASK ТА МАРШРУТИ API ---
+# --------------------------------------------------------------------------
+
+app = Flask(__name__)
+CORS(app) # Дозволяє CORS для роботи Mini App
+
+@app.route('/', methods=['GET'])
+def index():
+    """Проста перевірка стану сервера."""
+    return "Telegram Meal Tracker Backend is running!", 200
+
+
+# --- МАРШРУТИ ПРОФІЛЮ ---
+
+@app.route('/api/get_profile', methods=['POST'])
+@require_auth
+def api_get_profile():
+    data = request.get_json()
+    user_id = get_user_id_from_initdata(data['initData'])
+    profile = get_profile_data(user_id)
+    
+    if profile:
+        return jsonify({'exists': True, 'data': profile}), 200
+    else:
+        return jsonify({'exists': False, 'data': None}), 200
+
+@app.route('/api/save_profile', methods=['POST'])
+@require_auth
+def api_save_profile():
+    # Якщо цей маршрут досягнутий, initData вже валідовано декоратором @require_auth.
+    profile_data = request.get_json()
+    
+    # Виклик функції збереження
+    target_calories = save_profile_data(profile_data)
+    
+    return jsonify({'success': True, 'target_calories': target_calories}), 200
+
+
+# --- МАРШРУТИ ДАШБОРДУ ТА ТРЕКІНГУ ---
+
+@app.route('/api/get_daily_report', methods=['POST'])
+@require_auth
+def api_get_daily_report():
+    data = request.get_json()
+    user_id = get_user_id_from_initdata(data['initData'])
+    
+    report_data = get_daily_report_data(user_id)
     return jsonify(report_data), 200
 
 
 @app.route('/api/process_photo', methods=['POST'])
-def process_photo():
-    data = request.json
-    user_id = authenticate_user(data.get('initData'))
+@require_auth
+def api_process_photo():
+    data = request.get_json()
+    image_base64 = data.get('image_base64')
     
-    if not user_id:
-        return jsonify({"error": "Unauthorized"}), 401
-    
-    time.sleep(2) 
-    
-    mock_response = {
-        "name": "Медовик",
-        "calories": 450, 
-        "description": "Класичний десерт із медовими коржами та ніжним сметанним кремом. Подано невелику порцію.",
-    }
-    
-    return jsonify(mock_response), 200
+    if not image_base64:
+        return jsonify({'error': 'Image data is missing'}), 400
+        
+    meal_data = process_photo_with_ai(image_base64)
+    return jsonify(meal_data), 200
 
 
 @app.route('/api/save_meal', methods=['POST'])
-def save_meal():
-    data = request.json
-    user_id = authenticate_user(data.get('initData'))
+@require_auth
+def api_save_meal():
+    data = request.get_json()
+    user_id = get_user_id_from_initdata(data['initData'])
+    meal = data.get('meal')
     
-    if not user_id:
-        return jsonify({"error": "Unauthorized"}), 401
-    
-    return jsonify({"success": True}), 200
+    if save_meal_data(meal, user_id):
+        return jsonify({'success': True}), 200
+    return jsonify({'error': 'Failed to save meal'}), 500
 
 
 @app.route('/api/save_water', methods=['POST'])
-def save_water():
-    data = request.json
-    user_id = authenticate_user(data.get('initData'))
-    
-    if not user_id:
-        return jsonify({"error": "Unauthorized"}), 401
-    
+@require_auth
+def api_save_water():
+    data = request.get_json()
+    user_id = get_user_id_from_initdata(data['initData'])
     amount = data.get('amount')
-    if not isinstance(amount, int) or amount <= 0:
-        return jsonify({"error": "Invalid water amount"}), 400
+    
+    new_amount = save_water_data(amount, user_id)
+    return jsonify({'success': True, 'new_amount': new_amount}), 200
 
-    try:
-        conn = get_db_connection()
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        
-        conn.execute(
-            "INSERT INTO water_intake (user_id, amount, timestamp) VALUES (?, ?, ?)",
-            (user_id, amount, timestamp)
-        )
-        conn.commit()
-        conn.close()
-
-        new_total_water = get_today_water_intake(user_id)
-
-        return jsonify({"success": True, "new_amount": new_total_water}), 200
-
-    except Exception as e:
-        app.logger.error(f"Database error on save_water: {e}")
-        return jsonify({"error": "Database write error"}), 500
-
-
-# --- ЗАПУСК ---
 
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port, debug=True)
+    # При запуску локально (для Render ця частина не використовується)
+    app.run(debug=True, port=int(os.environ.get('PORT', 5000)))
