@@ -1,4 +1,4 @@
-# --- app.py (ФІНАЛЬНИЙ КОД З BASE64 В JSON) ---
+# --- app.py (ФІНАЛЬНИЙ КОД: ВИПРАВЛЕНА ОБРОБКА JSON ВІД GEMINI) ---
 
 import os
 import json
@@ -24,6 +24,7 @@ from psycopg2 import pool, extras
 # --- КОНФІГУРАЦІЯ ---
 
 app = Flask(__name__)
+# Дозволяємо CORS для усіх джерел, щоб Mini App міг звертатися
 CORS(app) 
 
 SERVER_TZ = timezone('Europe/Kiev')
@@ -135,6 +136,7 @@ def get_daily_report():
         cur.execute("SELECT weight_kg, height_cm, activity_level FROM user_profile WHERE user_id = %s", (user_id,))
         profile_data = cur.fetchone()
         
+        # TODO: Додайте логіку розрахунку цільових калорій тут
         target_calories = 2000 
         if profile_data:
              pass 
@@ -148,6 +150,7 @@ def get_daily_report():
 
     except Exception as e:
         app.logger.error(f"Error fetching daily report for user {user_id}: {e}")
+        # Повертаємо безпечний порожній набір даних у разі помилки
         return jsonify({
             "target": 2000,
             "consumed": 0,
@@ -203,7 +206,6 @@ def save_meal():
 def process_photo():
     data = request.get_json()
     
-    # initData тепер знову знаходиться в JSON-тілі
     init_data = data.get('initData', '') 
     user_id, _ = validate_init_data(init_data)
 
@@ -247,16 +249,21 @@ def process_photo():
             contents=[prompt, image_part]
         )
         
-        # 6. Обробка відповіді
-        json_str = response.text.strip().lstrip('```json').rstrip('```')
-        
+        # 6. Обробка відповіді: очищення від ```json...```
+        json_str = response.text.strip().lstrip('```json').rstrip('```').strip() 
+
         try:
             meal_data = json.loads(json_str)
         except json.JSONDecodeError:
-            app.logger.error(f"Gemini returned non-JSON response: {json_str}")
-            return jsonify({"status": "error", "message": "AI returned invalid JSON format."}), 500
+            # !!! ВИПРАВЛЕННЯ: Повертаємо 500 у разі помилки декодування JSON, логуючи сиру відповідь !!!
+            app.logger.error(f"Gemini returned non-JSON response. Raw text: {response.text}")
+            return jsonify({
+                "status": "error", 
+                "message": "AI returned invalid format. Please try another photo or report this issue."
+            }), 500
 
         if not all(k in meal_data for k in ['name', 'calories', 'description']):
+            app.logger.error(f"AI result is missing fields: {meal_data}")
             return jsonify({"status": "error", "message": "AI result is missing required fields."}), 500
 
         return jsonify({
@@ -370,4 +377,5 @@ def get_user_profile():
 
 
 if __name__ == '__main__':
+    # Використовуйте Gunicorn для продакшн, Flask для локального тестування
     app.run(host='0.0.0.0', port=5000)
