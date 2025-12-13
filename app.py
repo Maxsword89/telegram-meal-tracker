@@ -4,18 +4,20 @@ from urllib.parse import parse_qsl
 import json
 from datetime import datetime
 from flask_cors import CORS
+import time # Додано для імітації затримки AI
 
 app = Flask(__name__)
-CORS(app) # Дозволяє запити з Telegram WebApp
+# Дозволяє запити з Telegram WebApp
+# УВАГА: для реального продакшену потрібно обмежити домен
+CORS(app) 
 
 # --------------------------------------------------------------------------
-# --- 1. ІМІТАЦІЯ БАЗИ ДАНИХ (Для тестування на Render) ---
+# --- 1. ІМІТАЦІЯ БАЗИ ДАНИХ (Зберігається в пам'яті сервера) ---
 # --------------------------------------------------------------------------
-# Дані зберігаються в пам'яті сервера і будуть скинуті при перезавантаженні Render.
 
-USER_PROFILES = {} # Зберігає профіль користувача (ім'я, ціль, вода)
-USER_MEALS = {}    # Зберігає прийоми їжі {user_id: [{'name': '...', 'calories': 0, 'time': 'HH:MM'}, ...]}
-USER_WATER = {}    # Зберігає споживання води {user_id: 1500}
+USER_PROFILES = {} # {user_id: {name: ..., target_calories: ...}}
+USER_MEALS = {}    # {user_id: [{'name': '...', 'calories': 0, 'time': 'HH:MM'}, ...]}
+USER_WATER = {}    # {user_id: 1500}
 
 # --------------------------------------------------------------------------
 # --- 2. ДОПОМІЖНІ ФУНКЦІЇ ДЛЯ ОБРОБКИ ТА РОЗРАХУНКІВ ---
@@ -23,26 +25,30 @@ USER_WATER = {}    # Зберігає споживання води {user_id: 15
 
 def get_user_id_from_initdata(init_data: str) -> str:
     """Витягує Telegram user ID з initData"""
+    # Додано перевірку, щоб не падати, якщо init_data порожній
+    if not init_data:
+        return 'mock_user_id'
     try:
         parsed_data = dict(parse_qsl(init_data))
         user_json = json.loads(parsed_data.get('user', '{}'))
         return str(user_json.get('id', 'mock_user_id'))
-    except:
+    except Exception as e:
+        app.logger.error(f"Error parsing initData: {e}")
         return 'mock_user_id'
 
 def calculate_target_calories(profile_data: dict) -> int:
     """Розрахунок цільових калорій (дуже спрощений)"""
-    # Хардкод, який гарантує, що ми бачимо різні числа
     weight = profile_data.get('weight', 75)
     
-    if profile_data.get('goal') == 'Схуднення':
-        base_kcal = weight * 25
-        return int(base_kcal * 0.9)
-    elif profile_data.get('goal') == 'Набір маси':
-        base_kcal = weight * 35
-        return int(base_kcal * 1.1)
+    # Спрощена формула на основі ваги та мети
+    base_kcal = weight * 30
     
-    return int(weight * 30) # Підтримка
+    if profile_data.get('goal') == 'Схуднення':
+        return int(base_kcal * 0.9) # Дефіцит
+    elif profile_data.get('goal') == 'Набір маси':
+        return int(base_kcal * 1.1) # Профіцит
+    
+    return int(base_kcal) # Підтримка
 
 # --------------------------------------------------------------------------
 # --- 3. ЛОГІКА ЗБЕРЕЖЕННЯ/ОТРИМАННЯ ДАНИХ (ІМІТАЦІЯ БД) ---
@@ -62,10 +68,10 @@ def save_profile_data(profile_data: dict) -> int:
 
 def get_profile_data(user_id: str) -> dict or None:
     """Отримує профіль користувача"""
-    
     profile = USER_PROFILES.get(user_id)
     
     if profile:
+        # Повертаємо лише необхідні поля для уникнення надлишковості
         return {
             'name': profile.get('name'), 
             'weight': profile.get('weight'), 
@@ -80,34 +86,24 @@ def get_profile_data(user_id: str) -> dict or None:
     
     return None
 
-# ФІКС 2 (ЗБЕРЕЖЕННЯ ЇЖІ)
 def save_meal_data(user_id: str, meal: dict) -> bool:
     """Зберігає прийом їжі для поточного дня"""
-    
-    # Додаємо час
     meal['time'] = datetime.now().strftime('%H:%M')
     
-    # Ініціалізація списку, якщо його немає
     if user_id not in USER_MEALS:
         USER_MEALS[user_id] = []
         
-    # Додаємо прийом їжі
     USER_MEALS[user_id].append(meal)
     
-    print(f"Meal saved for {user_id}: {meal['name']} ({meal['calories']} kcal)")
     return True
 
-# ФІКС 3 (ЗБЕРЕЖЕННЯ ВОДИ)
 def save_water_data(user_id: str, amount_ml: int) -> int:
     """Зберігає споживання води та повертає новий загальний обсяг"""
-    
     current_amount = USER_WATER.get(user_id, 0)
     new_amount = current_amount + amount_ml
     
-    # ЗБЕРЕЖЕННЯ ВОДИ
     USER_WATER[user_id] = new_amount
     
-    print(f"Water saved for {user_id}: +{amount_ml}ml. Total: {new_amount}ml")
     return new_amount
 
 
@@ -130,11 +126,9 @@ def get_daily_report_data(user_id: str) -> dict:
     target_kcal = profile['target_calories']
     water_target = profile['water_target']
     
-    # Дані зі збережених прийомів їжі
+    # Дані зі збережених прийомів їжі та води
     meals = USER_MEALS.get(user_id, [])
     consumed_kcal = sum(meal['calories'] for meal in meals)
-    
-    # Дані зі збереженої води
     water_consumed = USER_WATER.get(user_id, 0)
         
     return {
@@ -147,11 +141,13 @@ def get_daily_report_data(user_id: str) -> dict:
         'meals': meals
     }
 
-# ФІКС 1: ФУНКЦІЯ AI-ОБРОБКИ (ТЕПЕР ПОВЕРТАЄ КОРЕКТНИЙ ОБ'ЄКТ)
+
+# ФІКС: ФУНКЦІЯ AI-ОБРОБКИ (ДОДАНО ІМІТАЦІЮ ЗАТРИМКИ)
 def process_photo_with_ai(image_base64: str) -> dict:
     """Імітує обробку фото AI"""
+    # Імітуємо затримку, щоб перевірити Loader
+    time.sleep(2) 
     
-    # Це приклад відповіді AI. Він має бути у форматі, який очікує фронтенд.
     return {
         'name': 'Приклад AI: Курячий салат',
         'calories': 450,
@@ -174,7 +170,6 @@ def get_profile():
     if profile:
         return jsonify({'success': True, 'exists': True, 'data': profile})
     else:
-        # Профіль не знайдено, користувач має заповнити форму
         return jsonify({'success': True, 'exists': False, 'data': None})
 
 
@@ -182,7 +177,6 @@ def get_profile():
 def save_profile():
     data = request.json
     try:
-        # Валідація і збереження
         target_calories = save_profile_data(data)
         return jsonify({'success': True, 'target_calories': target_calories})
     except Exception as e:
@@ -209,7 +203,6 @@ def process_photo():
         return jsonify({'success': False, 'error': 'Немає зображення'}), 400
         
     try:
-        # Виклик функції, що імітує AI
         meal_data = process_photo_with_ai(image_base64)
         return jsonify(meal_data)
     except Exception as e:
@@ -253,8 +246,4 @@ def save_water():
 
 
 if __name__ == '__main__':
-    # Для локального тестування
     app.run(debug=True)
-
-# Для Render (Gunicorn)
-# (не потрібно, Gunicorn використовує змінну `app`)
