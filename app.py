@@ -8,11 +8,11 @@ import json
 from datetime import datetime
 from flask_cors import CORS
 import time
-import os # ДОДАНО: для роботи зі змінними оточення
-import io # ДОДАНО: для роботи з байтами зображення
-import base64 # ДОДАНО: для декодування Base64
-from PIL import Image # ДОДАНО: для роботи з зображенням
-import re # ДОДАНО: для парсингу JSON
+import os
+import io
+import base64
+from PIL import Image
+import re 
 
 # ІМПОРТ GEMINI
 from google import genai
@@ -23,136 +23,129 @@ app = Flask(__name__)
 CORS(app)
 
 # --- 1. ІНІЦІАЛІЗАЦІЯ GEMINI ---
-# Клієнт автоматично використовує GEMINI_API_KEY зі змінних оточення
 try:
+    # Клієнт автоматично використовує GEMINI_API_KEY зі змінних оточення
     ai = genai.Client()
     GEMINI_MODEL = 'gemini-2.5-flash'
     app.logger.info(f"Gemini Client initialized using model: {GEMINI_MODEL}")
 except Exception as e:
-    app.logger.error(f"Error initializing Gemini Client: {e}")
+    app.logger.error(f"Error initializing Gemini Client: {e}. Check GEMINI_API_KEY.")
     ai = None
 # ------------------------------------
 
-# --- 2. ІМІТАЦІЯ БАЗИ ДАНИХ ---
+# --- 2. ІМІТАЦІЯ БАЗИ ДАНИХ (для простоти) ---
 USER_PROFILES = {}
-USER_MEALS = {}    
-USER_WATER = {}    
+USER_MEALS = {}
+USER_WATER = {}
 
 # --- 3. ДОПОМІЖНІ ФУНКЦІЇ ---
 
 def get_user_id_from_initdata(init_data: str) -> str:
-    """Витягує Telegram user ID з initData"""
-    if not init_data:
-        return 'mock_user_id'
-    try:
-        parsed_data = dict(parse_qsl(init_data))
-        user_json = json.loads(parsed_data.get('user', '{}'))
-        return str(user_json.get('id', 'mock_user_id'))
-    except Exception as e:
-        app.logger.error(f"Error parsing initData: {e}")
-        return 'mock_user_id'
+    """Витягує Telegram user ID з initData"""
+    if not init_data:
+        return 'mock_user_id'
+    try:
+        parsed_data = dict(parse_qsl(init_data))
+        user_json = json.loads(parsed_data.get('user', '{}'))
+        return str(user_json.get('id', 'mock_user_id'))
+    except Exception as e:
+        app.logger.error(f"Error parsing initData: {e}")
+        return 'mock_user_id'
 
 def calculate_target_calories(profile_data: dict) -> int:
-    """Розрахунок цільових калорій (спрощений)"""
-    weight = profile_data.get('weight', 75)
-    base_kcal = weight * 30
-    
-    if profile_data.get('goal') == 'Схуднення':
-        return int(base_kcal * 0.9) 
-    elif profile_data.get('goal') == 'Набір маси':
-        return int(base_kcal * 1.1) 
-    
-    return int(base_kcal) 
+    """Розрахунок цільових калорій (спрощений)"""
+    weight = profile_data.get('weight', 75)
+    base_kcal = weight * 30
+    
+    if profile_data.get('goal') == 'Схуднення':
+        return int(base_kcal * 0.9)
+    elif profile_data.get('goal') == 'Набір маси':
+        return int(base_kcal * 1.1)
+    
+    return int(base_kcal)
 
-# --- 4. ЛОГІКА ЗБЕРЕЖЕННЯ/ОТРИМАННЯ ДАНИХ (БЕЗ ЗМІН) ---
+# --- 4. ЛОГІКА ЗБЕРЕЖЕННЯ/ОТРИМАННЯ ДАНИХ ---
 
 def save_profile_data(profile_data: dict) -> int:
-    # ... (Ваш існуючий код)
-    user_id = get_user_id_from_initdata(profile_data['initData'])
-    target_kcal = calculate_target_calories(profile_data)
-    
-    profile_data['target_calories'] = target_kcal
-    USER_PROFILES[user_id] = profile_data
-    
-    return target_kcal
+    user_id = get_user_id_from_initdata(profile_data['initData'])
+    target_kcal = calculate_target_calories(profile_data)
+    
+    profile_data['target_calories'] = target_kcal
+    USER_PROFILES[user_id] = profile_data
+    
+    return target_kcal
 
 def get_profile_data(user_id: str) -> dict or None:
-    # ... (Ваш існуючий код)
-    profile = USER_PROFILES.get(user_id)
-    
-    if profile:
-        return {
-            'name': profile.get('name'), 
-            'weight': profile.get('weight'), 
-            'height': profile.get('height'), 
-            'age': profile.get('age'), 
-            'gender': profile.get('gender'),
-            'activity_level': profile.get('activity_level'), 
-            'goal': profile.get('goal'), 
-            'water_target': profile.get('water_target'),
-            'target_calories': profile.get('target_calories')
-        }
-    
-    return None
+    profile = USER_PROFILES.get(user_id)
+    
+    if profile:
+        return {
+            'name': profile.get('name'),
+            'weight': profile.get('weight'),
+            'height': profile.get('height'),
+            'age': profile.get('age'),
+            'gender': profile.get('gender'),
+            'activity_level': profile.get('activity_level'),
+            'goal': profile.get('goal'),
+            'water_target': profile.get('water_target'),
+            'target_calories': profile.get('target_calories')
+        }
+    
+    return None
 
 def save_meal_data(user_id: str, meal: dict) -> bool:
-    # ... (Ваш існуючий код)
-    meal['time'] = datetime.now().strftime('%H:%M')
-    
-    if user_id not in USER_MEALS:
-        USER_MEALS[user_id] = []
-        
-    USER_MEALS[user_id].append(meal)
-    
-    return True
+    meal['time'] = datetime.now().strftime('%H:%M')
+    
+    if user_id not in USER_MEALS:
+        USER_MEALS[user_id] = []
+        
+    USER_MEALS[user_id].append(meal)
+    
+    return True
 
 def save_water_data(user_id: str, amount_ml: int) -> int:
-    # ... (Ваш існуючий код)
-    current_amount = USER_WATER.get(user_id, 0)
-    new_amount = current_amount + amount_ml
-    
-    USER_WATER[user_id] = new_amount
-    
-    return new_amount
+    current_amount = USER_WATER.get(user_id, 0)
+    new_amount = current_amount + amount_ml
+    
+    USER_WATER[user_id] = new_amount
+    
+    return new_amount
 
 
 def get_daily_report_data(user_id: str) -> dict:
-    # ... (Ваш існуючий код)
-    profile = get_profile_data(user_id)
-    
-    if not profile:
-        return {
-            'user_name': 'Користувач', 'target': 2000, 'consumed': 0, 
-            'water_target': 2500, 'water_consumed': 0, 
-            'date': datetime.now().strftime('%d %B %Y'), 
-            'meals': []
-        }
-    
-    user_name = profile['name']
-    target_kcal = profile['target_calories']
-    water_target = profile['water_target']
-    
-    meals = USER_MEALS.get(user_id, [])
-    consumed_kcal = sum(meal['calories'] for meal in meals)
-    water_consumed = USER_WATER.get(user_id, 0)
-        
-    return {
-        'user_name': user_name,
-        'target': target_kcal, 
-        'consumed': consumed_kcal, 
-        'water_target': water_target,
-        'water_consumed': water_consumed, 
-        'date': datetime.now().strftime('%d %B %Y'), 
-        'meals': meals
-    }
+    profile = get_profile_data(user_id)
+    
+    if not profile:
+        return {
+            'user_name': 'Користувач', 'target': 2000, 'consumed': 0,
+            'water_target': 2500, 'water_consumed': 0,
+            'date': datetime.now().strftime('%d %B %Y'),
+            'meals': []
+        }
+    
+    user_name = profile['name']
+    target_kcal = profile['target_calories']
+    water_target = profile['water_target']
+    
+    meals = USER_MEALS.get(user_id, [])
+    consumed_kcal = sum(meal['calories'] for meal in meals)
+    water_consumed = USER_WATER.get(user_id, 0)
+        
+    return {
+        'user_name': user_name,
+        'target': target_kcal,
+        'consumed': consumed_kcal,
+        'water_target': water_target,
+        'water_consumed': water_consumed,
+        'date': datetime.now().strftime('%d %B %Y'),
+        'meals': meals
+    }
 
-
-# --- 5. ФУНКЦІЯ ОБРОБКИ ФОТО AI (ОНОВЛЕНО) ---
 
 def process_photo_with_ai(image_base64: str) -> dict:
     """Викликає Gemini для аналізу зображення і повертає JSON."""
     if not ai:
-        raise Exception("Gemini Client is not initialized.")
+        raise Exception("Gemini Client is not initialized. Cannot process photo.")
 
     try:
         # 1. Декодування зображення
@@ -185,7 +178,6 @@ def process_photo_with_ai(image_base64: str) -> dict:
         response_text = response.text.strip()
         
         # Використовуємо регулярний вираз для вилучення чистого JSON-об'єкта
-        # Це потрібно, якщо Gemini додає до відповіді markdown (```json ... ```)
         json_match = re.search(r'(\{.*\}|\{.*?)$', response_text.strip(), re.DOTALL)
         
         if json_match:
@@ -213,30 +205,10 @@ def process_photo_with_ai(image_base64: str) -> dict:
         raise Exception(f"General processing error: {e}")
 
 
-# --- 6. МАРШРУТИ API (ENDPOINTS) ---
-
-# ... (Всі інші маршрути залишаються без змін) ...
-
-@app.route('/api/process_photo', methods=['POST'])
-def process_photo():
-    data = request.json
-    image_base64 = data.get('image_base64')
-    
-    if not image_base64:
-        return jsonify({'success': False, 'error': 'Немає зображення'}), 400
-        
-    try:
-        # ТЕПЕР ВИКЛИКАЄМО РЕАЛЬНУ AI-ФУНКЦІЮ
-        meal_data = process_photo_with_ai(image_base64)
-        return jsonify(meal_data)
-    except Exception as e:
-        app.logger.error(f"Error processing photo: {e}")
-        return jsonify({'success': False, 'error': f'Помилка AI: {e}'}), 500
-
+# --- 5. МАРШРУТИ API (ENDPOINTS) ---
 
 @app.route('/api/get_profile', methods=['POST'])
 def get_profile():
-    # ... (Ваш існуючий код)
     data = request.json
     init_data = data.get('initData')
     user_id = get_user_id_from_initdata(init_data)
@@ -250,7 +222,6 @@ def get_profile():
 
 @app.route('/api/save_profile', methods=['POST'])
 def save_profile():
-    # ... (Ваш існуючий код)
     data = request.json
     try:
         target_calories = save_profile_data(data)
@@ -262,7 +233,6 @@ def save_profile():
 
 @app.route('/api/get_daily_report', methods=['POST'])
 def get_daily_report():
-    # ... (Ваш існуючий код)
     data = request.json
     init_data = data.get('initData')
     user_id = get_user_id_from_initdata(init_data)
@@ -270,9 +240,24 @@ def get_daily_report():
     return jsonify(report)
 
 
+@app.route('/api/process_photo', methods=['POST'])
+def process_photo():
+    data = request.json
+    image_base64 = data.get('image_base64')
+    
+    if not image_base64:
+        return jsonify({'success': False, 'error': 'Немає зображення'}), 400
+        
+    try:
+        meal_data = process_photo_with_ai(image_base64)
+        return jsonify(meal_data)
+    except Exception as e:
+        app.logger.error(f"Error processing photo: {e}")
+        return jsonify({'success': False, 'error': f'Помилка AI: {e}'}), 500
+
+
 @app.route('/api/save_meal', methods=['POST'])
 def save_meal():
-    # ... (Ваш існуючий код)
     data = request.json
     init_data = data.get('initData')
     meal = data.get('meal')
@@ -290,7 +275,6 @@ def save_meal():
 
 @app.route('/api/save_water', methods=['POST'])
 def save_water():
-    # ... (Ваш існуючий код)
     data = request.json
     init_data = data.get('initData')
     amount = data.get('amount')
@@ -307,16 +291,16 @@ def save_water():
         return jsonify({'success': False, 'error': 'Помилка збереження води'}), 500
 
 
-# --- 7. СТАТИЧНІ МАРШРУТИ (БЕЗ ЗМІН) ---
+# --- 6. СТАТИЧНІ МАРШРУТИ ---
 
 @app.route('/')
 def serve_index():
-    return send_from_directory('.', 'index.html')
+    return send_from_directory('.', 'index.html')
 
 @app.route('/<path:filename>')
 def serve_static(filename):
-    return send_from_directory('.', filename)
+    return send_from_directory('.', filename)
 # -----------------------------------------------------
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=True)
