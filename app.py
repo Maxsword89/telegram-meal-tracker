@@ -15,7 +15,7 @@ from PIL import Image
 import re
 # Для верифікації initData
 import hmac
-import hashlib 
+import hashlib
 
 # ІМПОРТ GEMINI
 from google import genai
@@ -28,7 +28,7 @@ CORS(app)
 # --- 1. ІНІЦІАЛІЗАЦІЯ GEMINI ТА TELEGRAM SECRETS ---
 
 # КРИТИЧНО: TELEGRAM_BOT_TOKEN МАЄ БУТИ ВСТАНОВЛЕНИЙ В ЗМІННИХ ОТОЧЕННЯ!
-TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN") 
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 if not TELEGRAM_BOT_TOKEN:
     app.logger.warning("TELEGRAM_BOT_TOKEN not found! Initializing in MOCK mode without initData verification.")
     
@@ -51,16 +51,23 @@ USER_WATER = {}
 
 def get_user_id_from_initdata(init_data: str) -> str:
     """Витягує Telegram user ID з initData"""
-    # Ігноруємо верифікацію, просто витягуємо ID для імітації БД
     if not init_data:
         return 'mock_user_id'
     try:
         parsed_data = dict(parse_qsl(init_data))
         user_json = json.loads(parsed_data.get('user', '{}'))
-        return str(user_json.get('id', 'mock_user_id'))
+        user_id = user_json.get('id')
+        if user_id:
+            return str(user_id)
+        
+        # Якщо ID не знайдено, перевіряємо, чи є авторизація (auth_date)
+        if parsed_data.get('auth_date'):
+            app.logger.warning("User ID not found in initData, falling back to mock.")
+            
     except Exception as e:
         app.logger.error(f"Error parsing initData: {e}")
-        return 'mock_user_id'
+        
+    return 'mock_user_id' # Повертаємо mock, якщо не вдалося отримати ID
 
 def is_init_data_valid(init_data: str) -> bool:
     """
@@ -68,7 +75,7 @@ def is_init_data_valid(init_data: str) -> bool:
     """
     if not TELEGRAM_BOT_TOKEN:
         # У режимі MOCK дозволяємо, але логуємо попередження
-        return True 
+        return True
 
     try:
         data_check_string = []
@@ -107,6 +114,8 @@ def is_init_data_valid(init_data: str) -> bool:
             return True
         else:
             app.logger.error("InitData validation failed: Hashes do not match.")
+            app.logger.error(f"Provided Hash: {hash_value}")
+            app.logger.error(f"Calculated Hash: {calculated_hash}")
             return False
 
     except Exception as e:
@@ -127,13 +136,15 @@ def calculate_target_calories(profile_data: dict) -> int:
     
     return int(base_kcal)
 
-# --- 4. ЛОГІКА ЗБЕРЕЖЕННЯ/ОТРИМАННЯ ДАНИХ (БЕЗ ЗМІН) ---
-# ... (всі функції save_* та get_daily_report_data залишаються без змін) ...
+# --- 4. ЛОГІКА ЗБЕРЕЖЕННЯ/ОТРИМАННЯ ДАНИХ ---
 
 def save_profile_data(profile_data: dict) -> int:
-    user_id = get_user_id_from_initdata(profile_data['initData'])
+    # Отримуємо ID тут, оскільки тут ми маємо доступ до initData
+    user_id = get_user_id_from_initdata(profile_data.get('initData', ''))
     target_kcal = calculate_target_calories(profile_data)
     
+    # Видаляємо initData перед збереженням
+    profile_data.pop('initData', None) 
     profile_data['target_calories'] = target_kcal
     USER_PROFILES[user_id] = profile_data
     
@@ -187,7 +198,7 @@ def get_daily_report_data(user_id: str) -> dict:
             'meals': []
         }
     
-    user_name = profile['name']
+    user_name = profile.get('name', 'Користувач')
     target_kcal = profile['target_calories']
     water_target = profile['water_target']
     
@@ -249,10 +260,24 @@ def process_photo_with_ai(image_base64: str) -> dict:
             json_string = json_match.group(0).replace('```json', '').replace('```', '').strip()
             meal_data = json.loads(json_string)
             
-            # Перевірка обов'язкових полів
-            if not isinstance(meal_data.get('calories'), int):
-                 meal_data['calories'] = int(meal_data.get('calories', 0))
+            # ВИПРАВЛЕННЯ: Надійне перетворення калорій у ціле число
+            calories_value = meal_data.get('calories')
             
+            if calories_value is not None:
+                try:
+                    # Спробуємо перетворити на int (чи Float, а потім на Int)
+                    meal_data['calories'] = int(float(calories_value))
+                except (ValueError, TypeError):
+                    meal_data['calories'] = 0
+            else:
+                 meal_data['calories'] = 0
+
+            # Перевірка наявності name та description
+            if not meal_data.get('name'):
+                 meal_data['name'] = 'Невідома страва'
+            if not meal_data.get('description'):
+                 meal_data['description'] = 'Деталі не надано.'
+
             return meal_data
         else:
             app.logger.error(f"Failed to parse JSON from AI response: {response_text}")
@@ -279,6 +304,10 @@ def check_auth():
         data = request.json
         init_data = data.get('initData', '')
         
+        # Додано перевірку, що initData справді існує та має довжину
+        if not init_data or len(init_data) < 50:
+             return jsonify({'success': False, 'error': 'НЕДІЙСНА АВТОРИЗАЦІЯ (Відсутні initData)'}), 401
+
         if not is_init_data_valid(init_data):
             return jsonify({'success': False, 'error': 'НЕДІЙСНА АВТОРИЗАЦІЯ (Invalid initData)'}), 401
     
@@ -293,8 +322,10 @@ def get_profile():
     profile = get_profile_data(user_id)
     
     if profile:
-        return jsonify({'success': True, 'exists': True, 'profile': profile}) # Змінено 'data' на 'profile' для відповідності фронтенду
+        # Front-end очікує 'exists': True та об'єкт 'profile'
+        return jsonify({'success': True, 'exists': True, 'profile': profile})
     else:
+        # Front-end очікує 'exists': False, щоб знати, що потрібно перенаправити на форму
         return jsonify({'success': True, 'exists': False, 'profile': None})
 
 
@@ -302,7 +333,8 @@ def get_profile():
 def save_profile():
     data = request.json
     try:
-        target_calories = save_profile_data(data)
+        # save_profile_data використовує initData для отримання user_id
+        target_calories = save_profile_data(data) 
         return jsonify({'success': True, 'target_calories': target_calories})
     except Exception as e:
         app.logger.error(f"Error saving profile: {e}")
@@ -315,6 +347,7 @@ def get_daily_report():
     init_data = data.get('initData')
     user_id = get_user_id_from_initdata(init_data)
     report = get_daily_report_data(user_id)
+    # Повертає звіт (report) безпосередньо, як очікує фронтенд
     return jsonify(report)
 
 
@@ -328,6 +361,7 @@ def process_photo():
         
     try:
         meal_data = process_photo_with_ai(image_base64)
+        # Повертає дані про їжу (meal_data) безпосередньо, як очікує фронтенд
         return jsonify(meal_data)
     except Exception as e:
         app.logger.error(f"Error processing photo: {e}")
@@ -362,8 +396,12 @@ def save_water():
         return jsonify({'success': False, 'error': 'Не вказано кількість води'}), 400
     
     try:
-        new_amount = save_water_data(user_id, amount)
+        # amount має бути int
+        amount_int = int(amount)
+        new_amount = save_water_data(user_id, amount_int)
         return jsonify({'success': True, 'new_amount': new_amount})
+    except ValueError:
+        return jsonify({'success': False, 'error': 'Кількість води має бути числом'}), 400
     except Exception as e:
         app.logger.error(f"Error saving water: {e}")
         return jsonify({'success': False, 'error': 'Помилка збереження води'}), 500
@@ -377,6 +415,7 @@ def serve_index():
 
 @app.route('/<path:filename>')
 def serve_static(filename):
+    # Додано логіку для правильного відображення profile.html
     return send_from_directory('.', filename)
 # -----------------------------------------------------
 
