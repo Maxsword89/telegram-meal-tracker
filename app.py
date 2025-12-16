@@ -1,5 +1,5 @@
 # =========================================================
-# --- app.py (ФІНАЛЬНИЙ КОД: З ІНТЕГРАЦІЄЮ GEMINI 2.5 FLASH) ---
+# --- app.py (ФІНАЛЬНИЙ КОД: З GEMINI ТА ВЕРИФІКАЦІЄЮ INITDATA) ---
 # =========================================================
 
 from flask import Flask, request, jsonify, send_from_directory
@@ -12,7 +12,10 @@ import os
 import io
 import base64
 from PIL import Image
-import re 
+import re
+# Для верифікації initData
+import hmac
+import hashlib 
 
 # ІМПОРТ GEMINI
 from google import genai
@@ -22,7 +25,13 @@ from google.genai.errors import APIError
 app = Flask(__name__)
 CORS(app)
 
-# --- 1. ІНІЦІАЛІЗАЦІЯ GEMINI ---
+# --- 1. ІНІЦІАЛІЗАЦІЯ GEMINI ТА TELEGRAM SECRETS ---
+
+# КРИТИЧНО: TELEGRAM_BOT_TOKEN МАЄ БУТИ ВСТАНОВЛЕНИЙ В ЗМІННИХ ОТОЧЕННЯ!
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN") 
+if not TELEGRAM_BOT_TOKEN:
+    app.logger.warning("TELEGRAM_BOT_TOKEN not found! Initializing in MOCK mode without initData verification.")
+    
 try:
     # Клієнт автоматично використовує GEMINI_API_KEY зі змінних оточення
     ai = genai.Client()
@@ -31,7 +40,7 @@ try:
 except Exception as e:
     app.logger.error(f"Error initializing Gemini Client: {e}. Check GEMINI_API_KEY.")
     ai = None
-# ------------------------------------
+# --------------------------------------------------------
 
 # --- 2. ІМІТАЦІЯ БАЗИ ДАНИХ (для простоти) ---
 USER_PROFILES = {}
@@ -42,6 +51,7 @@ USER_WATER = {}
 
 def get_user_id_from_initdata(init_data: str) -> str:
     """Витягує Telegram user ID з initData"""
+    # Ігноруємо верифікацію, просто витягуємо ID для імітації БД
     if not init_data:
         return 'mock_user_id'
     try:
@@ -52,10 +62,63 @@ def get_user_id_from_initdata(init_data: str) -> str:
         app.logger.error(f"Error parsing initData: {e}")
         return 'mock_user_id'
 
+def is_init_data_valid(init_data: str) -> bool:
+    """
+    Верифікує хеш initData згідно з документацією Telegram Mini App.
+    """
+    if not TELEGRAM_BOT_TOKEN:
+        # У режимі MOCK дозволяємо, але логуємо попередження
+        return True 
+
+    try:
+        data_check_string = []
+        hash_value = None
+        
+        # 1. Розбираємо init_data
+        parsed_data = dict(parse_qsl(init_data))
+
+        # 2. Відділяємо 'hash' від решти даних
+        if 'hash' in parsed_data:
+            hash_value = parsed_data.pop('hash')
+        
+        # 3. Сортуємо дані та формуємо рядок data_check_string
+        for key, value in sorted(parsed_data.items()):
+            if key != 'hash':
+                data_check_string.append(f"{key}={value}")
+        
+        data_check_string = "\n".join(data_check_string)
+        
+        # 4. Формуємо секретний ключ (Secret Key)
+        secret_key = hmac.new(
+            'WebAppData'.encode(),
+            TELEGRAM_BOT_TOKEN.encode(),
+            hashlib.sha256
+        ).digest()
+        
+        # 5. Обчислюємо HMAC-SHA256 хеш
+        calculated_hash = hmac.new(
+            secret_key,
+            data_check_string.encode(),
+            hashlib.sha256
+        ).hexdigest()
+
+        # 6. Порівнюємо
+        if calculated_hash == hash_value:
+            return True
+        else:
+            app.logger.error("InitData validation failed: Hashes do not match.")
+            return False
+
+    except Exception as e:
+        app.logger.error(f"Error during initData validation: {e}")
+        return False
+
+
 def calculate_target_calories(profile_data: dict) -> int:
     """Розрахунок цільових калорій (спрощений)"""
+    # Цю функцію можна розширити, використовуючи формулу Міффліна-Сан-Жеора
     weight = profile_data.get('weight', 75)
-    base_kcal = weight * 30
+    base_kcal = weight * 30 # База для підтримки ваги (спрощено)
     
     if profile_data.get('goal') == 'Схуднення':
         return int(base_kcal * 0.9)
@@ -64,7 +127,8 @@ def calculate_target_calories(profile_data: dict) -> int:
     
     return int(base_kcal)
 
-# --- 4. ЛОГІКА ЗБЕРЕЖЕННЯ/ОТРИМАННЯ ДАНИХ ---
+# --- 4. ЛОГІКА ЗБЕРЕЖЕННЯ/ОТРИМАННЯ ДАНИХ (БЕЗ ЗМІН) ---
+# ... (всі функції save_* та get_daily_report_data залишаються без змін) ...
 
 def save_profile_data(profile_data: dict) -> int:
     user_id = get_user_id_from_initdata(profile_data['initData'])
@@ -181,6 +245,7 @@ def process_photo_with_ai(image_base64: str) -> dict:
         json_match = re.search(r'(\{.*\}|\{.*?)$', response_text.strip(), re.DOTALL)
         
         if json_match:
+            # Видаляємо можливі Markdown блоки типу ```json
             json_string = json_match.group(0).replace('```json', '').replace('```', '').strip()
             meal_data = json.loads(json_string)
             
@@ -207,6 +272,19 @@ def process_photo_with_ai(image_base64: str) -> dict:
 
 # --- 5. МАРШРУТИ API (ENDPOINTS) ---
 
+@app.before_request
+def check_auth():
+    """Перевіряє верифікацію initData перед обробкою POST-запитів до API."""
+    if request.method == 'POST' and request.path.startswith('/api/'):
+        data = request.json
+        init_data = data.get('initData', '')
+        
+        if not is_init_data_valid(init_data):
+            return jsonify({'success': False, 'error': 'НЕДІЙСНА АВТОРИЗАЦІЯ (Invalid initData)'}), 401
+    
+    # Продовжуємо обробку запиту, якщо це не POST-запит до API або він пройшов верифікацію
+
+
 @app.route('/api/get_profile', methods=['POST'])
 def get_profile():
     data = request.json
@@ -215,9 +293,9 @@ def get_profile():
     profile = get_profile_data(user_id)
     
     if profile:
-        return jsonify({'success': True, 'exists': True, 'data': profile})
+        return jsonify({'success': True, 'exists': True, 'profile': profile}) # Змінено 'data' на 'profile' для відповідності фронтенду
     else:
-        return jsonify({'success': True, 'exists': False, 'data': None})
+        return jsonify({'success': True, 'exists': False, 'profile': None})
 
 
 @app.route('/api/save_profile', methods=['POST'])
@@ -303,4 +381,7 @@ def serve_static(filename):
 # -----------------------------------------------------
 
 if __name__ == '__main__':
+    # Встановіть тут TELEGRAM_BOT_TOKEN для локального тестування, 
+    # або використовуйте файл .env та бібліотеку python-dotenv
+    # os.environ["TELEGRAM_BOT_TOKEN"] = "ВАШ_ТОКЕН" 
     app.run(debug=True)
