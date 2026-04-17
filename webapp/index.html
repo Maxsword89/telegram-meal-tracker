@@ -26,7 +26,7 @@
             box-shadow: 0 0 20px rgba(0,0,0,0.05);
         }
 
-        /* Статус бар */
+        /* Status Bar */
         .status-bar {
             padding: 12px 20px;
             background: white;
@@ -38,7 +38,7 @@
             border-bottom: 1px solid #f0f0f0;
         }
 
-        /* Хедер */
+        /* Header */
         .header {
             padding: 16px 20px;
             background: white;
@@ -63,7 +63,7 @@
             color: #666;
         }
 
-        /* Картка калорій */
+        /* Calories Card */
         .calories-card {
             background: linear-gradient(135deg, #6c5ce7 0%, #a855f7 100%);
             margin: 16px 20px;
@@ -133,7 +133,7 @@
             opacity: 0.9;
         }
 
-        /* Таймлайн прийомів їжі */
+        /* Meals Timeline */
         .meals-timeline {
             padding: 8px 20px;
             display: flex;
@@ -176,7 +176,7 @@
             transition: color 0.3s ease;
         }
 
-        /* Секція логування */
+        /* Log Section */
         .log-section {
             padding: 20px;
         }
@@ -213,7 +213,7 @@
             color: #666;
         }
 
-        /* Рекомендації */
+        /* Recommendations */
         .recommendations-section {
             padding: 0 20px 20px;
         }
@@ -286,7 +286,7 @@
             transform: scale(0.95);
         }
 
-        /* Нижня навігація */
+        /* Bottom Navigation */
         .bottom-nav {
             position: fixed;
             bottom: 0;
@@ -340,7 +340,7 @@
             transition: all 0.3s ease;
         }
 
-        /* Модальне вікно */
+        /* Modal */
         .modal {
             display: none;
             position: fixed;
@@ -384,7 +384,7 @@
             color: #999;
         }
 
-        /* Анімації */
+        /* Animations */
         @keyframes fadeInUp {
             from {
                 opacity: 0;
@@ -427,19 +427,19 @@
 </head>
 <body>
     <div class="app-container">
-        <!-- Статус бар -->
+        <!-- Status Bar -->
         <div class="status-bar">
             <span>9:41</span>
             <span>📶 🔋 100%</span>
         </div>
 
-        <!-- Хедер -->
+        <!-- Header -->
         <div class="header">
             <div class="greeting">Hello, <span>Sarah!</span></div>
             <div class="subtitle">Ready to track your nutrition?</div>
         </div>
 
-        <!-- Картка калорій -->
+        <!-- Calories Card -->
         <div class="calories-card">
             <div class="calories-label">🔥 Calories Remaining</div>
             <div class="calories-value" id="caloriesRemaining">1450 <small>kcal</small></div>
@@ -453,7 +453,7 @@
             </div>
         </div>
 
-        <!-- Таймлайн прийомів їжі -->
+        <!-- Meals Timeline -->
         <div class="meals-timeline" id="mealsTimeline">
             <div class="time-dot active" data-time="08:00">
                 <div class="dot"></div>
@@ -477,7 +477,7 @@
             </div>
         </div>
 
-        <!-- Секція логування -->
+        <!-- Log Section -->
         <div class="log-section">
             <div class="log-card" id="logMealBtn">
                 <div class="log-icon">📸</div>
@@ -486,17 +486,17 @@
             </div>
         </div>
 
-        <!-- Рекомендації -->
+        <!-- Recommendations -->
         <div class="recommendations-section">
             <div class="section-title">🤖 AI-Powered Smart Recommendations</div>
             <div class="section-title" style="font-size: 14px; color: #666; margin-top: -8px;">For a Balanced Tomorrow, Try Adding:</div>
             
             <div id="recommendationsList">
-                <!-- Динамічні рекомендації -->
+                <!-- Dynamic recommendations -->
             </div>
         </div>
 
-        <!-- Нижня навігація -->
+        <!-- Bottom Navigation -->
         <div class="bottom-nav">
             <div class="nav-item active" data-nav="dashboard">
                 <div class="nav-icon">🏠</div>
@@ -517,7 +517,7 @@
         </div>
     </div>
 
-    <!-- Модальне вікно для додавання їжі -->
+    <!-- Modal for adding meal -->
     <div id="mealModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -533,14 +533,14 @@
     <script>
         const telegramId = new URLSearchParams(window.location.search).get('user_id');
         
-        // Дані
+        // Data
         let currentData = {
             meals: [],
             caloriesConsumed: 550,
             calorieGoal: 2000
         };
 
-        // Рекомендації
+        // Recommendations
         const recommendations = [
             {
                 emoji: "🥑",
@@ -574,7 +574,7 @@
             }
         ];
 
-        // Рендер рекомендацій
+        // Render recommendations
         function renderRecommendations() {
             const container = document.getElementById('recommendationsList');
             container.innerHTML = recommendations.map(rec => `
@@ -590,7 +590,7 @@
             `).join('');
         }
 
-        // Логування рекомендації
+        // Log recommendation
         function logRecommendation(name, calories, protein, fat, carbs) {
             addMeal({
                 name: name,
@@ -602,7 +602,7 @@
             });
         }
 
-        // Додавання прийому їжі
+        // Add meal
         function addMeal(meal) {
             currentData.meals.unshift({
                 ...meal,
@@ -614,11 +614,10 @@
             updateUI();
             saveToLocalStorage();
             
-            // Анімація
             showToast(`✅ ${meal.name} added! +${meal.calories} kcal`);
         }
 
-        // Оновлення UI
+        // Update UI
         function updateUI() {
             const remaining = currentData.calorieGoal - currentData.caloriesConsumed;
             const progress = (currentData.caloriesConsumed / currentData.calorieGoal) * 100;
@@ -627,13 +626,9 @@
             document.getElementById('consumedCalories').innerText = currentData.caloriesConsumed;
             document.getElementById('remainingCalories').innerText = Math.max(0, remaining);
             document.getElementById('calorieProgress').style.width = `${Math.min(progress, 100)}%`;
-            
-            // Анімація прогресу
-            const progressBar = document.getElementById('calorieProgress');
-            progressBar.style.transition = 'width 0.5s cubic-bezier(0.4, 0, 0.2, 1)';
         }
 
-        // Аналіз фото через Gemini
+        // Analyze photo with Gemini
         async function analyzeAndSave() {
             const fileInput = document.getElementById('mealPhoto');
             const file = fileInput.files[0];
@@ -682,7 +677,7 @@
             document.getElementById('analysisResult').style.display = 'none';
         }
 
-        // Збереження в localStorage
+        // Save to localStorage
         function saveToLocalStorage() {
             if (telegramId) {
                 localStorage.setItem(`aura_meals_${telegramId}`, JSON.stringify(currentData.meals));
@@ -690,7 +685,7 @@
             }
         }
 
-        // Завантаження з localStorage
+        // Load from localStorage
         function loadFromLocalStorage() {
             if (telegramId) {
                 const savedMeals = localStorage.getItem(`aura_meals_${telegramId}`);
@@ -705,7 +700,7 @@
             updateUI();
         }
 
-        // Toast повідомлення
+        // Toast message
         function showToast(message) {
             const toast = document.createElement('div');
             toast.textContent = message;
@@ -726,7 +721,7 @@
             setTimeout(() => toast.remove(), 2000);
         }
 
-        // Модальне вікно
+        // Modal functions
         function openModal() {
             document.getElementById('mealModal').style.display = 'flex';
         }
@@ -735,7 +730,7 @@
             document.getElementById('mealModal').style.display = 'none';
         }
 
-        // Навігація
+        // Navigation
         function setupNavigation() {
             document.querySelectorAll('.nav-item').forEach(item => {
                 item.addEventListener('click', () => {
@@ -756,7 +751,7 @@
             });
         }
 
-        // Таймлайн
+        // Timeline
         function setupTimeline() {
             document.querySelectorAll('.time-dot').forEach(dot => {
                 dot.addEventListener('click', () => {
@@ -767,7 +762,7 @@
             });
         }
 
-        // Завантаження даних з сервера
+        // Load server data
         async function loadServerData() {
             if (telegramId) {
                 try {
@@ -784,14 +779,13 @@
             }
         }
 
-        // Ініціалізація
+        // Initialize
         renderRecommendations();
         setupNavigation();
         setupTimeline();
         loadFromLocalStorage();
         loadServerData();
 
-        // Додаємо обробник для кнопки логування
         document.getElementById('logMealBtn').addEventListener('click', openModal);
     </script>
 </body>
