@@ -24,7 +24,7 @@
         }
 
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--light-gray); overflow-x: hidden; }
-        .app-container { max-width: 430px; margin: 0 auto; background: var(--white); min-height: 100vh; position: relative; padding-bottom: 80px; }
+        .app-container { max-width: 430px; margin: 0 auto; background: var(--white); min-height: 100vh; position: relative; padding-bottom: 100px; }
         
         /* Header */
         .header { padding: 20px; background: var(--white); border-bottom: 1px solid #eee; }
@@ -69,6 +69,18 @@
         .log-meal-title { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
         .log-meal-subtitle { font-size: 13px; opacity: 0.9; }
         .log-meal-arrow { font-size: 24px; color: var(--white); opacity: 0.8; }
+        
+        /* AI Рекомендація */
+        .ai-recommendation {
+            background: linear-gradient(135deg, #f0e6ff, #faf5ff);
+            margin: 0 20px 20px;
+            padding: 20px;
+            border-radius: 24px;
+            border-left: 4px solid var(--primary);
+        }
+        .ai-recommendation h4 { font-size: 16px; color: var(--primary); margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+        .ai-recommendation p { font-size: 14px; color: var(--dark); line-height: 1.4; }
+        .ai-recommendation .deficiency { color: var(--warning); font-weight: 600; }
         
         /* Акордеон для прийомів їжі */
         .meals-list { margin: 0 20px 20px; }
@@ -118,9 +130,10 @@
             background: var(--danger);
             color: var(--white);
             border: none;
-            padding: 8px 16px;
+            padding: 10px 16px;
             border-radius: 20px;
-            font-size: 12px;
+            font-size: 13px;
+            font-weight: 500;
             cursor: pointer;
             margin-top: 8px;
             width: 100%;
@@ -128,20 +141,8 @@
         }
         .delete-meal:active { transform: scale(0.97); }
         
-        /* AI Рекомендації */
-        .ai-recommendation {
-            background: linear-gradient(135deg, #f0e6ff, #faf5ff);
-            margin: 0 20px 20px;
-            padding: 20px;
-            border-radius: 24px;
-            border-left: 4px solid var(--primary);
-        }
-        .ai-recommendation h4 { font-size: 16px; color: var(--primary); margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
-        .ai-recommendation p { font-size: 14px; color: var(--dark); line-height: 1.4; }
-        .ai-recommendation .deficiency { color: var(--warning); font-weight: 600; }
-        
         /* Календар */
-        .calendar-collapsible { background: var(--white); border-radius: 24px; overflow: hidden; margin-bottom: 20px; box-shadow: var(--shadow-sm); }
+        .calendar-collapsible { background: var(--white); border-radius: 24px; overflow: hidden; margin: 0 20px 20px; box-shadow: var(--shadow-sm); }
         .calendar-header-custom { display: flex; justify-content: space-between; align-items: center; padding: 16px; cursor: pointer; }
         .calendar-header-custom h3 { font-size: 16px; color: var(--dark); }
         .calendar-header-custom .arrow { font-size: 20px; transition: transform 0.3s ease; }
@@ -150,12 +151,11 @@
         .calendar-body.collapsed { display: none; }
         .calendar-weekdays { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; font-size: 12px; color: var(--gray); margin-bottom: 8px; }
         .calendar-days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
-        .calendar-day { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; border-radius: 40px; font-size: 14px; cursor: pointer; transition: var(--transition); }
+        .calendar-day { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; border-radius: 40px; font-size: 14px; cursor: pointer; transition: var(--transition); position: relative; }
         .calendar-day.today { background: linear-gradient(135deg, var(--primary), var(--secondary)); color: white; font-weight: 600; }
         .calendar-day.selected { background: var(--primary); color: white; transform: scale(1.05); }
-        .calendar-day.has-meal::after { content: '•'; position: absolute; transform: translate(8px, 8px); font-size: 12px; color: var(--primary); }
         
-        .weekly-stats { background: var(--white); border-radius: 20px; padding: 16px; margin-top: 20px; box-shadow: var(--shadow-sm); }
+        .weekly-stats { background: var(--white); border-radius: 20px; padding: 16px; margin: 0 20px 20px; box-shadow: var(--shadow-sm); }
         .weekly-row { display: flex; align-items: center; padding: 10px 0; border-bottom: 1px solid #eee; gap: 8px; }
         .weekly-day { font-weight: 600; width: 36px; font-size: 13px; }
         .weekly-bar-container { flex: 2; height: 8px; background: #eee; border-radius: 4px; overflow: hidden; }
@@ -170,9 +170,9 @@
         .bar-M { background: var(--warning); }
         
         /* Плани харчування */
-        .meal-plan-card { background: var(--white); border-radius: 20px; padding: 16px; margin-bottom: 16px; box-shadow: var(--shadow-sm); border: 1px solid #eee; transition: var(--transition); }
+        .meal-plan-card { background: var(--white); border-radius: 20px; padding: 16px; margin: 0 20px 16px; box-shadow: var(--shadow-sm); border: 1px solid #eee; transition: var(--transition); }
         .meal-plan-card:active { transform: scale(0.98); }
-        .meal-plan-btn { background: linear-gradient(135deg, var(--primary), var(--secondary)); color: white; border: none; padding: 8px 16px; border-radius: 20px; font-size: 13px; cursor: pointer; }
+        .meal-plan-btn { background: linear-gradient(135deg, var(--primary), var(--secondary)); color: white; border: none; padding: 10px 16px; border-radius: 20px; font-size: 14px; font-weight: 500; cursor: pointer; margin-top: 8px; width: 100%; }
         
         /* Нижня навігація */
         .bottom-nav {
@@ -186,11 +186,11 @@
             backdrop-filter: blur(10px);
             display: flex;
             justify-content: space-around;
-            padding: 12px 20px 22px;
+            padding: 10px 20px 20px;
             border-top: 1px solid #eee;
             z-index: 100;
         }
-        .nav-item { display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer; padding: 8px 12px; border-radius: 30px; transition: var(--transition); }
+        .nav-item { display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer; padding: 8px 16px; border-radius: 30px; transition: var(--transition); }
         .nav-item.active { background: rgba(108,92,231,0.1); }
         .nav-item.active .nav-icon { color: var(--primary); transform: translateY(-2px); }
         .nav-item.active .nav-label { color: var(--primary); font-weight: 600; }
@@ -202,6 +202,7 @@
         .modal-content { background: var(--white); border-radius: 32px; padding: 24px; max-width: 90%; width: 350px; }
         .modal-header { display: flex; justify-content: space-between; margin-bottom: 20px; }
         .close-modal { background: none; border: none; font-size: 24px; cursor: pointer; color: var(--gray); }
+        .log-button { background: linear-gradient(135deg, var(--primary), var(--secondary)); color: white; border: none; padding: 12px; border-radius: 28px; font-weight: 600; width: 100%; cursor: pointer; }
         
         @keyframes slideIn { from { opacity: 0; transform: translateX(-20px); } to { opacity: 1; transform: translateX(0); } }
         .page { animation: slideIn 0.3s ease; }
@@ -225,7 +226,6 @@
                 <div class="calories-stats"><span>🍽️ Спожито: <strong id="consumedCalories">0</strong> ккал</span><span>⚡ Залишилось: <strong id="remainingCalories">0</strong> ккал</span></div>
             </div>
             
-            <!-- AI Рекомендація на основі попереднього дня -->
             <div id="aiRecommendation" class="ai-recommendation" style="display: none;">
                 <h4>🤖 AI-рекомендація на сьогодні</h4>
                 <p id="recommendationText"></p>
@@ -249,9 +249,9 @@
                 <div class="calendar-header-custom" id="calendarHeader"><h3>📅 Календар харчування</h3><span class="arrow">▼</span></div>
                 <div class="calendar-body" id="calendarBody">
                     <div style="display: flex; justify-content: space-between; margin-bottom: 16px;">
-                        <button id="prevMonthBtn" style="background: none; border: none; font-size: 20px; cursor: pointer;">←</button>
+                        <button id="prevMonthBtn" style="background: none; border: none; font-size: 20px; cursor: pointer; padding: 8px;">←</button>
                         <span id="currentMonthYear" style="font-weight: 600;"></span>
-                        <button id="nextMonthBtn" style="background: none; border: none; font-size: 20px; cursor: pointer;">→</button>
+                        <button id="nextMonthBtn" style="background: none; border: none; font-size: 20px; cursor: pointer; padding: 8px;">→</button>
                     </div>
                     <div class="calendar-weekdays"><span>Пн</span><span>Вт</span><span>Ср</span><span>Чт</span><span>Пт</span><span>Сб</span><span>Нд</span></div>
                     <div id="calendarDays" class="calendar-days"></div>
@@ -276,7 +276,7 @@
     </div>
 
     <!-- Модальне вікно -->
-    <div id="mealModal" class="modal"><div class="modal-content"><div class="modal-header"><h3>📸 Додати страву</h3><button class="close-modal" onclick="closeModal()">×</button></div><input type="file" id="mealPhoto" accept="image/*" style="width:100%; padding:12px; border:1px solid #ddd; border-radius:12px; margin-bottom:16px;"><button class="log-button" onclick="analyzeAndSave()" style="width:100%; background:#6c5ce7; color:white; border:none; padding:12px; border-radius:28px; font-weight:600;">Аналізувати та зберегти</button><div id="analysisResult" style="margin-top:16px; display:none;"></div></div></div>
+    <div id="mealModal" class="modal"><div class="modal-content"><div class="modal-header"><h3>📸 Додати страву</h3><button class="close-modal" onclick="closeModal()">×</button></div><input type="file" id="mealPhoto" accept="image/*" style="width:100%; padding:12px; border:1px solid #ddd; border-radius:12px; margin-bottom:16px;"><button class="log-button" onclick="analyzeAndSave()">Аналізувати та зберегти</button><div id="analysisResult" style="margin-top:16px; display:none;"></div></div></div>
 
     <script>
         const urlParams = new URLSearchParams(window.location.search);
@@ -287,20 +287,24 @@
         }
         if (telegramId === 'null') telegramId = null;
         
-        let userData = { firstName: urlName || 'Користувач', calorieGoal: 2000, proteinGoal: 0, fatGoal: 0, carbsGoal: 0, mealsByDate: {}, hasProfile: false };
+        let userData = { firstName: urlName || 'Користувач', calorieGoal: 2000, proteinGoal: 100, fatGoal: 50, carbsGoal: 200, mealsByDate: {}, hasProfile: false };
         
         function loadUserData() {
             if (!telegramId) return;
             const saved = localStorage.getItem(`aura_user_${telegramId}`);
-            if (saved) { const d = JSON.parse(saved); userData = { ...userData, ...d }; }
-            if (urlName && urlName !== 'null') userData.firstName = urlName;
+            if (saved) { 
+                try {
+                    const d = JSON.parse(saved); 
+                    userData = { ...userData, ...d };
+                } catch(e) {}
+            }
+            if (urlName && urlName !== 'null' && urlName !== 'undefined') userData.firstName = urlName;
             document.getElementById('userName').innerText = userData.firstName;
             document.getElementById('calorieGoal').innerText = userData.calorieGoal;
             updateDashboard(); updateCalendar(); updateWeeklyStats(); updateMealPlansLock(); generateAIRecommendation();
         }
         function saveUserData() { if(telegramId) localStorage.setItem(`aura_user_${telegramId}`, JSON.stringify(userData)); }
         
-        // Генерація AI-рекомендації на основі попереднього дня
         function generateAIRecommendation() {
             const yesterday = new Date();
             yesterday.setDate(yesterday.getDate() - 1);
@@ -312,7 +316,6 @@
                 return;
             }
             
-            // Аналіз недоліків
             let totalProtein = 0, totalFat = 0, totalCarbs = 0;
             yesterdayMeals.forEach(m => { totalProtein += m.protein || 0; totalFat += m.fat || 0; totalCarbs += m.carbs || 0; });
             
@@ -335,17 +338,15 @@
             document.getElementById('aiRecommendation').style.display = 'block';
         }
         
-        // Додавання прийому
         function addMeal(meal) {
             const todayKey = new Date().toISOString().split('T')[0];
             if (!userData.mealsByDate[todayKey]) userData.mealsByDate[todayKey] = [];
             userData.mealsByDate[todayKey].push({ ...meal, id: Date.now(), time: new Date().toLocaleTimeString('uk-UA',{hour:'2-digit',minute:'2-digit'}), timestamp: new Date().toISOString() });
             saveUserData();
-            updateDashboard(); updateCalendar(); updateWeeklyStats();
+            updateDashboard(); updateCalendar(); updateWeeklyStats(); generateAIRecommendation();
             showToast(`✅ ${meal.name} додано! +${meal.calories} ккал`);
         }
         
-        // Видалення прийому
         function deleteMeal(dateKey, mealId) {
             if (userData.mealsByDate[dateKey]) {
                 userData.mealsByDate[dateKey] = userData.mealsByDate[dateKey].filter(m => m.id !== mealId);
@@ -400,7 +401,6 @@
         
         function toggleMeal(id) { document.getElementById(`meal-${id}`).classList.toggle('open'); }
         
-        // Календар
         let currentDate = new Date(), selectedDate = new Date(), calendarCollapsed = false;
         function toggleCalendar() { calendarCollapsed=!calendarCollapsed; document.getElementById('calendarBody').classList.toggle('collapsed',calendarCollapsed); document.querySelector('.calendar-header-custom').classList.toggle('collapsed',calendarCollapsed); }
         document.getElementById('calendarHeader').onclick = toggleCalendar;
@@ -457,7 +457,7 @@
                 container.innerHTML = `<div style="text-align:center;padding:40px;color:#999;"><div style="font-size:48px;margin-bottom:16px;">🔒</div><p>Плани харчування недоступні</p><button onclick="window.location.href='/settings?user_id=${telegramId}'" style="margin-top:20px;padding:10px 20px;background:#6c5ce7;color:white;border:none;border-radius:20px;">Перейти до налаштувань</button></div>`;
                 return;
             }
-            subtitle.innerHTML = 'Оберіть план на тиждень';
+            subtitle.innerHTML = 'Оберіть план на тиждень (розраховано за вашими параметрами)';
             const plans = [
                 { name:'🥗 Збалансований', desc:'Для підтримки ваги', calories:userData.calorieGoal },
                 { name:'💪 Білковий', desc:'Для набору м\'язової маси', calories:Math.round(userData.calorieGoal*1.15) },
@@ -478,7 +478,7 @@
             try{
                 const res = await fetch('/api/analyze',{method:'POST',body:fd});
                 const data = await res.json();
-                if(res.ok){ resultDiv.innerHTML=`<div style="background:#e8f5e9;padding:12px;border-radius:12px;"><p><strong>🍽️ ${data.name}</strong></p><p>🔥 ${data.calories} ккал | 🥩 ${data.protein}г | 🧈 ${data.fat}г | 🍚 ${data.carbs}г</p><p>💡 ${data.feedback}</p><button class="log-button" onclick="saveAnalyzedMeal(${JSON.stringify(data).replace(/"/g,'&quot;')})" style="margin-top:12px; background:#6c5ce7; color:white; border:none; padding:8px 16px; border-radius:20px;">✅ Зберегти</button></div>`; }
+                if(res.ok){ resultDiv.innerHTML=`<div style="background:#e8f5e9;padding:12px;border-radius:12px;"><p><strong>🍽️ ${data.name}</strong></p><p>🔥 ${data.calories} ккал | 🥩 ${data.protein}г | 🧈 ${data.fat}г | 🍚 ${data.carbs}г</p><p>💡 ${data.feedback}</p><button class="log-button" onclick="saveAnalyzedMeal(${JSON.stringify(data).replace(/"/g,'&quot;')})" style="margin-top:12px;">✅ Зберегти</button></div>`; }
                 else{ resultDiv.innerHTML=`<div style="color:red;">❌ Помилка: ${data.error}</div>`; }
             } catch(e){ resultDiv.innerHTML=`<div style="color:red;">❌ Помилка: ${e.message}</div>`; }
         }
@@ -516,14 +516,15 @@
                 const data = await res.json();
                 if(!data.error){
                     if(data.first_name) userData.firstName = data.first_name;
-                    userData.hasProfile = !!(data.age && data.weight && data.height);
+                    userData.hasProfile = !!(data.age && data.weight && data.height && data.age > 0 && data.weight > 0 && data.height > 0);
                     if(userData.hasProfile && data.daily_calorie_goal) userData.calorieGoal = data.daily_calorie_goal;
                     document.getElementById('userName').innerText = userData.firstName;
                     document.getElementById('calorieGoal').innerText = userData.calorieGoal;
                     saveUserData();
                     updateDashboard();
+                    updateMealPlansLock();
                 }
-            } catch(e){}
+            } catch(e){ console.log('Server error:',e); }
         }
         
         setupNavigation();
