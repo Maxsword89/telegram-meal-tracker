@@ -70,11 +70,15 @@ class NutritionCalculator:
         carbs_calories = calories - protein_calories - fat_calories
         carbs_grams = carbs_calories / 4
         
-        return {
+        result = {
             "protein": round(protein_grams, 1),
             "fat": round(fat_grams, 1),
             "carbs": round(carbs_grams, 1)
         }
+        
+        logger.info(f"Calculated macros for {calories} kcal, weight={weight}kg, goal={goal}: protein={result['protein']}g, fat={result['fat']}g, carbs={result['carbs']}g")
+        
+        return result
     
     def get_daily_summary(self, meals: List[Dict], user_profile: Dict) -> Dict:
         """Calculate daily nutrition summary"""
@@ -84,8 +88,21 @@ class NutritionCalculator:
         total_carbs = sum(m.get("carbs", 0) for m in meals)
         
         goal_calories = user_profile.get("daily_calorie_goal", 2000) if user_profile else 2000
-        remaining = max(0, goal_calories - total_calories)
-        progress = (total_calories / goal_calories) * 100 if goal_calories > 0 else 0
+        goal_protein = user_profile.get("protein_goal", 100) if user_profile else 100
+        goal_fat = user_profile.get("fat_goal", 50) if user_profile else 50
+        goal_carbs = user_profile.get("carbs_goal", 200) if user_profile else 200
+        
+        remaining_calories = max(0, goal_calories - total_calories)
+        progress_calories = (total_calories / goal_calories) * 100 if goal_calories > 0 else 0
+        
+        remaining_protein = max(0, goal_protein - total_protein)
+        progress_protein = (total_protein / goal_protein) * 100 if goal_protein > 0 else 0
+        
+        remaining_fat = max(0, goal_fat - total_fat)
+        progress_fat = (total_fat / goal_fat) * 100 if goal_fat > 0 else 0
+        
+        remaining_carbs = max(0, goal_carbs - total_carbs)
+        progress_carbs = (total_carbs / goal_carbs) * 100 if goal_carbs > 0 else 0
         
         return {
             "total": {
@@ -96,8 +113,21 @@ class NutritionCalculator:
             },
             "goal": {
                 "calories": goal_calories,
-                "remaining": remaining
+                "protein": goal_protein,
+                "fat": goal_fat,
+                "carbs": goal_carbs
             },
-            "progress": min(progress, 100),
+            "remaining": {
+                "calories": remaining_calories,
+                "protein": remaining_protein,
+                "fat": remaining_fat,
+                "carbs": remaining_carbs
+            },
+            "progress": {
+                "calories": min(progress_calories, 100),
+                "protein": min(progress_protein, 100),
+                "fat": min(progress_fat, 100),
+                "carbs": min(progress_carbs, 100)
+            },
             "meals_count": len(meals)
         }
