@@ -143,7 +143,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Обробка будь-якого текстового повідомлення - показує головне меню"""
     user = update.effective_user
     user_name = user.first_name or "Користувач"
-    logger.info(f"📨 Message from user {user.id}: {update.message.text[:50]}")
+    logger.info(f"📨 Message from user {user.id}: {update.message.text[:50] if update.message.text else 'no text'}")
     
     keyboard = [
         [
