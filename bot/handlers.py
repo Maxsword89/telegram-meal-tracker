@@ -1,26 +1,23 @@
 # ============================================
-# Файл: bot/handlers.py
+# Файл: bot/handlers.py (для версії 21.x)
 # ============================================
 import os
 import logging
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
-from telegram.ext import CommandHandler, MessageHandler, filters, ContextTypes
+from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 from telegram.constants import ParseMode
 
 logger = logging.getLogger(__name__)
 
-# Адреса вашого додатку на Render
 WEBAPP_URL = os.getenv("WEBAPP_URL", "https://telegram-meal-tracker.onrender.com")
 
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Обробка команди /start - показує головне меню"""
+    """Handle /start command"""
     user = update.effective_user
     logger.info(f"📨 Start command from user {user.id}")
     
-    # Отримуємо ім'я користувача з Telegram
     user_name = user.first_name or "Користувач"
     
-    # Клавіатура з кнопками для WebApp (передаємо user_id та name)
     keyboard = [
         [
             InlineKeyboardButton(
@@ -60,15 +57,15 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 Вітаю, {user_name}! 👋
 
-Твій персональний AI-нутриціолог на базі *Gemini AI*.
+Твій персональний AI-нутриціолог.
 
-*🏠 ГОЛОВНА* - Відстежуй прогрес за сьогодні
+*🏠 ГОЛОВНА* - Відстежуй прогрес
 *📸 ДОДАТИ СТРАВУ* - Аналіз фото через AI
 *📅 СТАТИСТИКА* - Календар та графіки
-*📋 ПЛАНИ* - Готові плани харчування
+*📋 ПЛАНИ* - Плани харчування
 *⚙️ НАЛАШТУВАННЯ* - Керуй профілем
 
-Натискай на кнопки нижче, щоб почати! 🚀
+Натискай на кнопки нижче! 🚀
 """
     
     await update.message.reply_text(
@@ -79,7 +76,7 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logger.info(f"✅ Menu sent to user {user.id}")
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Обробка команди /help - показує довідку"""
+    """Handle /help command"""
     user = update.effective_user
     user_name = user.first_name or "Користувач"
     
@@ -113,23 +110,10 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 /help - Ця довідка
 
 *Як користуватися:*
-1️⃣ Налаштуй профіль в розділі "Налаштування"
-2️⃣ Сфотографуй страву або обери з галереї
-3️⃣ ШІ визначить калорії та БЖУ
-4️⃣ Стеж за прогресом на головній сторінці
-5️⃣ Отримуй персоналізовані рекомендації
-
-*Поради для точного аналізу:*
-- Фотографуйте при хорошому освітленні
-- Покажіть всю тарілку
-- Додавайте прийоми регулярно
-
-*Оцінка калорій:*
-🟢 Н - норма (80-110% від денної норми)
-🔴 Б - багато (>110% від норми)
-🟠 М - мало (<80% від норми)
-
-*Підтримка:* @your_support
+1️⃣ Налаштуй профіль
+2️⃣ Сфотографуй їжу
+3️⃣ AI визначить калорії
+4️⃣ Стеж за прогресом
 """
     
     await update.message.reply_text(
@@ -140,10 +124,9 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logger.info(f"✅ Help sent to user {user.id}")
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Обробка будь-якого текстового повідомлення - показує головне меню"""
+    """Handle any text message"""
     user = update.effective_user
     user_name = user.first_name or "Користувач"
-    logger.info(f"📨 Message from user {user.id}: {update.message.text[:50] if update.message.text else 'no text'}")
     
     keyboard = [
         [
@@ -186,8 +169,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
     logger.info(f"✅ Menu resent to user {user.id}")
 
-def setup_handlers(application):
-    """Налаштування обробників бота"""
+def setup_handlers(application: Application):
+    """Setup bot handlers"""
     application.add_handler(CommandHandler("start", start_command))
     application.add_handler(CommandHandler("help", help_command))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
