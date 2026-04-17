@@ -1,0 +1,798 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+    <title>Aura Health - Food Tracker</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background: #f8f9fa;
+            overflow-x: hidden;
+        }
+
+        .app-container {
+            max-width: 430px;
+            margin: 0 auto;
+            background: #ffffff;
+            min-height: 100vh;
+            position: relative;
+            box-shadow: 0 0 20px rgba(0,0,0,0.05);
+        }
+
+        /* Статус бар */
+        .status-bar {
+            padding: 12px 20px;
+            background: white;
+            display: flex;
+            justify-content: space-between;
+            font-size: 14px;
+            font-weight: 500;
+            color: #1a1a2e;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        /* Хедер */
+        .header {
+            padding: 16px 20px;
+            background: white;
+        }
+
+        .greeting {
+            font-size: 28px;
+            font-weight: 700;
+            color: #1a1a2e;
+            margin-bottom: 4px;
+        }
+
+        .greeting span {
+            background: linear-gradient(135deg, #6c5ce7, #a855f7);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        .subtitle {
+            font-size: 14px;
+            color: #666;
+        }
+
+        /* Картка калорій */
+        .calories-card {
+            background: linear-gradient(135deg, #6c5ce7 0%, #a855f7 100%);
+            margin: 16px 20px;
+            padding: 24px;
+            border-radius: 28px;
+            color: white;
+            position: relative;
+            overflow: hidden;
+            animation: fadeInUp 0.5s ease;
+        }
+
+        .calories-card::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -20%;
+            width: 200px;
+            height: 200px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 50%;
+        }
+
+        .calories-label {
+            font-size: 14px;
+            opacity: 0.9;
+            margin-bottom: 8px;
+        }
+
+        .calories-value {
+            font-size: 48px;
+            font-weight: 800;
+            line-height: 1;
+            margin-bottom: 4px;
+        }
+
+        .calories-value small {
+            font-size: 18px;
+            font-weight: 500;
+        }
+
+        .calories-sub {
+            font-size: 13px;
+            opacity: 0.8;
+            margin-bottom: 20px;
+        }
+
+        .progress-bar {
+            background: rgba(255,255,255,0.25);
+            height: 8px;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 16px 0 12px;
+        }
+
+        .progress-fill {
+            background: white;
+            height: 100%;
+            width: 0%;
+            border-radius: 4px;
+            transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .calories-stats {
+            display: flex;
+            justify-content: space-between;
+            font-size: 13px;
+            opacity: 0.9;
+        }
+
+        /* Таймлайн прийомів їжі */
+        .meals-timeline {
+            padding: 8px 20px;
+            display: flex;
+            justify-content: space-between;
+            background: white;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .time-dot {
+            text-align: center;
+            flex: 1;
+            position: relative;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .time-dot.active .dot {
+            background: #6c5ce7;
+            transform: scale(1.2);
+            box-shadow: 0 0 0 4px rgba(108,92,231,0.2);
+        }
+
+        .time-dot.active .time-label {
+            color: #6c5ce7;
+            font-weight: 600;
+        }
+
+        .dot {
+            width: 12px;
+            height: 12px;
+            background: #ddd;
+            border-radius: 50%;
+            margin: 0 auto 8px;
+            transition: all 0.3s ease;
+        }
+
+        .time-label {
+            font-size: 12px;
+            color: #999;
+            transition: color 0.3s ease;
+        }
+
+        /* Секція логування */
+        .log-section {
+            padding: 20px;
+        }
+
+        .log-card {
+            background: linear-gradient(135deg, #f8f9fa, #fff);
+            border-radius: 24px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 1px solid #f0f0f0;
+            transition: all 0.3s ease;
+            animation: fadeInUp 0.5s ease;
+            cursor: pointer;
+        }
+
+        .log-card:active {
+            transform: scale(0.98);
+        }
+
+        .log-icon {
+            font-size: 32px;
+            margin-bottom: 12px;
+        }
+
+        .log-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #1a1a2e;
+            margin-bottom: 4px;
+        }
+
+        .log-subtitle {
+            font-size: 13px;
+            color: #666;
+        }
+
+        /* Рекомендації */
+        .recommendations-section {
+            padding: 0 20px 20px;
+        }
+
+        .section-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #1a1a2e;
+            margin-bottom: 16px;
+        }
+
+        .recommendation-card {
+            background: white;
+            border-radius: 20px;
+            padding: 16px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            border: 1px solid #f0f0f0;
+            transition: all 0.3s ease;
+            animation: fadeInUp 0.5s ease;
+            cursor: pointer;
+        }
+
+        .recommendation-card:active {
+            transform: scale(0.98);
+            background: #fafafa;
+        }
+
+        .rec-emoji {
+            font-size: 40px;
+        }
+
+        .rec-content {
+            flex: 1;
+        }
+
+        .rec-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #1a1a2e;
+            margin-bottom: 4px;
+        }
+
+        .rec-subtitle {
+            font-size: 12px;
+            color: #6c5ce7;
+            margin-bottom: 6px;
+        }
+
+        .rec-description {
+            font-size: 12px;
+            color: #999;
+        }
+
+        .log-button {
+            background: linear-gradient(135deg, #6c5ce7, #a855f7);
+            color: white;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .log-button:active {
+            transform: scale(0.95);
+        }
+
+        /* Нижня навігація */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            max-width: 430px;
+            margin: 0 auto;
+            background: rgba(255,255,255,0.95);
+            backdrop-filter: blur(10px);
+            display: flex;
+            justify-content: space-around;
+            padding: 12px 20px 24px;
+            border-top: 1px solid #f0f0f0;
+            z-index: 100;
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            padding: 8px 16px;
+            border-radius: 30px;
+        }
+
+        .nav-item.active {
+            background: rgba(108,92,231,0.1);
+        }
+
+        .nav-item.active .nav-icon {
+            color: #6c5ce7;
+            transform: translateY(-2px);
+        }
+
+        .nav-item.active .nav-label {
+            color: #6c5ce7;
+            font-weight: 600;
+        }
+
+        .nav-icon {
+            font-size: 22px;
+            color: #999;
+            transition: all 0.3s ease;
+        }
+
+        .nav-label {
+            font-size: 11px;
+            color: #999;
+            transition: all 0.3s ease;
+        }
+
+        /* Модальне вікно */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 200;
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 32px;
+            padding: 24px;
+            max-width: 90%;
+            width: 350px;
+            animation: slideUp 0.3s ease;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .modal-header h3 {
+            font-size: 20px;
+            color: #1a1a2e;
+        }
+
+        .close-modal {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #999;
+        }
+
+        /* Анімації */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(50px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @media (max-width: 430px) {
+            .app-container {
+                margin: 0;
+                border-radius: 0;
+            }
+        }
+
+        ::-webkit-scrollbar {
+            width: 0;
+            background: transparent;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Статус бар -->
+        <div class="status-bar">
+            <span>9:41</span>
+            <span>📶 🔋 100%</span>
+        </div>
+
+        <!-- Хедер -->
+        <div class="header">
+            <div class="greeting">Hello, <span>Sarah!</span></div>
+            <div class="subtitle">Ready to track your nutrition?</div>
+        </div>
+
+        <!-- Картка калорій -->
+        <div class="calories-card">
+            <div class="calories-label">🔥 Calories Remaining</div>
+            <div class="calories-value" id="caloriesRemaining">1450 <small>kcal</small></div>
+            <div class="calories-sub">of <span id="calorieGoal">2000</span> kcal</div>
+            <div class="progress-bar">
+                <div class="progress-fill" id="calorieProgress" style="width: 27.5%"></div>
+            </div>
+            <div class="calories-stats">
+                <span>🍽️ Consumed: <strong id="consumedCalories">550</strong> kcal</span>
+                <span>⚡ Remaining: <strong id="remainingCalories">1450</strong> kcal</span>
+            </div>
+        </div>
+
+        <!-- Таймлайн прийомів їжі -->
+        <div class="meals-timeline" id="mealsTimeline">
+            <div class="time-dot active" data-time="08:00">
+                <div class="dot"></div>
+                <div class="time-label">08:00</div>
+            </div>
+            <div class="time-dot" data-time="05:00">
+                <div class="dot"></div>
+                <div class="time-label">05:00</div>
+            </div>
+            <div class="time-dot" data-time="10:00">
+                <div class="dot"></div>
+                <div class="time-label">10:00</div>
+            </div>
+            <div class="time-dot" data-time="14:00">
+                <div class="dot"></div>
+                <div class="time-label">14:00</div>
+            </div>
+            <div class="time-dot" data-time="18:00">
+                <div class="dot"></div>
+                <div class="time-label">18:00</div>
+            </div>
+        </div>
+
+        <!-- Секція логування -->
+        <div class="log-section">
+            <div class="log-card" id="logMealBtn">
+                <div class="log-icon">📸</div>
+                <div class="log-title">LOG MEAL (AI PHOTO)</div>
+                <div class="log-subtitle">Take photos of your food</div>
+            </div>
+        </div>
+
+        <!-- Рекомендації -->
+        <div class="recommendations-section">
+            <div class="section-title">🤖 AI-Powered Smart Recommendations</div>
+            <div class="section-title" style="font-size: 14px; color: #666; margin-top: -8px;">For a Balanced Tomorrow, Try Adding:</div>
+            
+            <div id="recommendationsList">
+                <!-- Динамічні рекомендації -->
+            </div>
+        </div>
+
+        <!-- Нижня навігація -->
+        <div class="bottom-nav">
+            <div class="nav-item active" data-nav="dashboard">
+                <div class="nav-icon">🏠</div>
+                <div class="nav-label">Dashboard</div>
+            </div>
+            <div class="nav-item" data-nav="log">
+                <div class="nav-icon">📸</div>
+                <div class="nav-label">Log</div>
+            </div>
+            <div class="nav-item" data-nav="mealplans">
+                <div class="nav-icon">📋</div>
+                <div class="nav-label">Meal Plans</div>
+            </div>
+            <div class="nav-item" data-nav="profile">
+                <div class="nav-icon">👤</div>
+                <div class="nav-label">Profile</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальне вікно для додавання їжі -->
+    <div id="mealModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>📸 Add Meal</h3>
+                <button class="close-modal" onclick="closeModal()">×</button>
+            </div>
+            <input type="file" id="mealPhoto" accept="image/*" style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 12px; margin-bottom: 16px;">
+            <button class="log-button" onclick="analyzeAndSave()" style="width: 100%;">Analyze & Save</button>
+            <div id="analysisResult" style="margin-top: 16px; display: none;"></div>
+        </div>
+    </div>
+
+    <script>
+        const telegramId = new URLSearchParams(window.location.search).get('user_id');
+        
+        // Дані
+        let currentData = {
+            meals: [],
+            caloriesConsumed: 550,
+            calorieGoal: 2000
+        };
+
+        // Рекомендації
+        const recommendations = [
+            {
+                emoji: "🥑",
+                title: "Avocado Toast",
+                subtitle: "Fate / Protein",
+                description: "Rich in healthy fats and fiber",
+                calories: 320,
+                protein: 8,
+                fat: 22,
+                carbs: 28
+            },
+            {
+                emoji: "🥣",
+                title: "Lentil Soup",
+                subtitle: "Fiber / Iron",
+                description: "High in protein and minerals",
+                calories: 250,
+                protein: 15,
+                fat: 4,
+                carbs: 40
+            },
+            {
+                emoji: "🥗",
+                title: "Mixed Berries Bowl",
+                subtitle: "Vitamins / Antioxidants",
+                description: "Boost your immune system",
+                calories: 180,
+                protein: 3,
+                fat: 2,
+                carbs: 38
+            }
+        ];
+
+        // Рендер рекомендацій
+        function renderRecommendations() {
+            const container = document.getElementById('recommendationsList');
+            container.innerHTML = recommendations.map(rec => `
+                <div class="recommendation-card" onclick="logRecommendation('${rec.title}', ${rec.calories}, ${rec.protein}, ${rec.fat}, ${rec.carbs})">
+                    <div class="rec-emoji">${rec.emoji}</div>
+                    <div class="rec-content">
+                        <div class="rec-title">${rec.title}</div>
+                        <div class="rec-subtitle">${rec.subtitle}</div>
+                        <div class="rec-description">${rec.description}</div>
+                    </div>
+                    <button class="log-button">Log</button>
+                </div>
+            `).join('');
+        }
+
+        // Логування рекомендації
+        function logRecommendation(name, calories, protein, fat, carbs) {
+            addMeal({
+                name: name,
+                calories: calories,
+                protein: protein,
+                fat: fat,
+                carbs: carbs,
+                feedback: `✅ ${name} added successfully!`
+            });
+        }
+
+        // Додавання прийому їжі
+        function addMeal(meal) {
+            currentData.meals.unshift({
+                ...meal,
+                time: new Date().toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' }),
+                timestamp: new Date().toISOString()
+            });
+            
+            currentData.caloriesConsumed += meal.calories;
+            updateUI();
+            saveToLocalStorage();
+            
+            // Анімація
+            showToast(`✅ ${meal.name} added! +${meal.calories} kcal`);
+        }
+
+        // Оновлення UI
+        function updateUI() {
+            const remaining = currentData.calorieGoal - currentData.caloriesConsumed;
+            const progress = (currentData.caloriesConsumed / currentData.calorieGoal) * 100;
+            
+            document.getElementById('caloriesRemaining').innerHTML = `${Math.max(0, remaining)} <small>kcal</small>`;
+            document.getElementById('consumedCalories').innerText = currentData.caloriesConsumed;
+            document.getElementById('remainingCalories').innerText = Math.max(0, remaining);
+            document.getElementById('calorieProgress').style.width = `${Math.min(progress, 100)}%`;
+            
+            // Анімація прогресу
+            const progressBar = document.getElementById('calorieProgress');
+            progressBar.style.transition = 'width 0.5s cubic-bezier(0.4, 0, 0.2, 1)';
+        }
+
+        // Аналіз фото через Gemini
+        async function analyzeAndSave() {
+            const fileInput = document.getElementById('mealPhoto');
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                alert('Please select a photo first');
+                return;
+            }
+            
+            const resultDiv = document.getElementById('analysisResult');
+            resultDiv.style.display = 'block';
+            resultDiv.innerHTML = '<div style="text-align: center;">🔍 Analyzing with AI...</div>';
+            
+            const formData = new FormData();
+            formData.append('photo', file);
+            
+            try {
+                const response = await fetch('/api/analyze', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.innerHTML = `
+                        <div style="background: #e8f5e9; padding: 12px; border-radius: 12px;">
+                            <p><strong>🍽️ ${data.name}</strong></p>
+                            <p>🔥 ${data.calories} kcal | 🥩 ${data.protein}g | 🧈 ${data.fat}g | 🍚 ${data.carbs}g</p>
+                            <p>💡 ${data.feedback}</p>
+                            <button class="log-button" onclick="saveAnalyzedMeal(${JSON.stringify(data).replace(/"/g, '&quot;')})" style="margin-top: 12px;">✅ Save Meal</button>
+                        </div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `<div style="color: red;">❌ Error: ${data.error}</div>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<div style="color: red;">❌ Network error: ${error.message}</div>`;
+            }
+        }
+
+        function saveAnalyzedMeal(meal) {
+            addMeal(meal);
+            closeModal();
+            document.getElementById('mealPhoto').value = '';
+            document.getElementById('analysisResult').style.display = 'none';
+        }
+
+        // Збереження в localStorage
+        function saveToLocalStorage() {
+            if (telegramId) {
+                localStorage.setItem(`aura_meals_${telegramId}`, JSON.stringify(currentData.meals));
+                localStorage.setItem(`aura_calories_${telegramId}`, currentData.caloriesConsumed);
+            }
+        }
+
+        // Завантаження з localStorage
+        function loadFromLocalStorage() {
+            if (telegramId) {
+                const savedMeals = localStorage.getItem(`aura_meals_${telegramId}`);
+                if (savedMeals) {
+                    currentData.meals = JSON.parse(savedMeals);
+                }
+                const savedCalories = localStorage.getItem(`aura_calories_${telegramId}`);
+                if (savedCalories) {
+                    currentData.caloriesConsumed = parseInt(savedCalories);
+                }
+            }
+            updateUI();
+        }
+
+        // Toast повідомлення
+        function showToast(message) {
+            const toast = document.createElement('div');
+            toast.textContent = message;
+            toast.style.cssText = `
+                position: fixed;
+                bottom: 80px;
+                left: 50%;
+                transform: translateX(-50%);
+                background: #1a1a2e;
+                color: white;
+                padding: 12px 24px;
+                border-radius: 30px;
+                font-size: 14px;
+                z-index: 1000;
+                animation: fadeInUp 0.3s ease;
+            `;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 2000);
+        }
+
+        // Модальне вікно
+        function openModal() {
+            document.getElementById('mealModal').style.display = 'flex';
+        }
+
+        function closeModal() {
+            document.getElementById('mealModal').style.display = 'none';
+        }
+
+        // Навігація
+        function setupNavigation() {
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active'));
+                    item.classList.add('active');
+                    
+                    const navName = item.dataset.nav;
+                    if (navName === 'log') {
+                        openModal();
+                    } else if (navName === 'dashboard') {
+                        showToast('Dashboard');
+                    } else if (navName === 'mealplans') {
+                        showToast('Meal Plans coming soon!');
+                    } else if (navName === 'profile') {
+                        window.location.href = `/settings?user_id=${telegramId}`;
+                    }
+                });
+            });
+        }
+
+        // Таймлайн
+        function setupTimeline() {
+            document.querySelectorAll('.time-dot').forEach(dot => {
+                dot.addEventListener('click', () => {
+                    document.querySelectorAll('.time-dot').forEach(d => d.classList.remove('active'));
+                    dot.classList.add('active');
+                    showToast(`Showing meals for ${dot.dataset.time}`);
+                });
+            });
+        }
+
+        // Завантаження даних з сервера
+        async function loadServerData() {
+            if (telegramId) {
+                try {
+                    const userRes = await fetch(`/api/user/${telegramId}`);
+                    const userData = await userRes.json();
+                    if (!userData.error && userData.daily_calorie_goal) {
+                        currentData.calorieGoal = userData.daily_calorie_goal;
+                        document.getElementById('calorieGoal').innerText = currentData.calorieGoal;
+                        updateUI();
+                    }
+                } catch (e) {
+                    console.log('Server not available, using local data');
+                }
+            }
+        }
+
+        // Ініціалізація
+        renderRecommendations();
+        setupNavigation();
+        setupTimeline();
+        loadFromLocalStorage();
+        loadServerData();
+
+        // Додаємо обробник для кнопки логування
+        document.getElementById('logMealBtn').addEventListener('click', openModal);
+    </script>
+</body>
+</html>
