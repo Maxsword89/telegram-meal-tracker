@@ -23,10 +23,10 @@
             background: #ffffff;
             min-height: 100vh;
             position: relative;
-            box-shadow: 0 0 20px rgba(0,0,0,0.05);
+            padding-bottom: 80px;
         }
 
-        /* Header (без статус бару) */
+        /* Header */
         .header {
             padding: 20px;
             background: white;
@@ -50,6 +50,86 @@
         .subtitle {
             font-size: 14px;
             color: #666;
+        }
+
+        /* Календар */
+        .calendar-section {
+            padding: 16px 20px;
+            background: white;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .calendar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .calendar-header button {
+            background: none;
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 30px;
+            transition: all 0.3s ease;
+        }
+
+        .calendar-header button:hover {
+            background: #f0f0f0;
+        }
+
+        .calendar-weekdays {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            text-align: center;
+            font-size: 12px;
+            color: #999;
+            margin-bottom: 8px;
+        }
+
+        .calendar-days {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 4px;
+        }
+
+        .calendar-day {
+            aspect-ratio: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border-radius: 40px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .calendar-day.today {
+            background: linear-gradient(135deg, #6c5ce7, #a855f7);
+            color: white;
+            font-weight: 600;
+        }
+
+        .calendar-day.selected {
+            background: #6c5ce7;
+            color: white;
+            transform: scale(1.05);
+        }
+
+        .calendar-day.has-meal::after {
+            content: '•';
+            position: absolute;
+            bottom: 2px;
+            font-size: 12px;
+            color: #6c5ce7;
+        }
+
+        .calendar-day.today.has-meal::after {
+            color: white;
         }
 
         /* Картка калорій */
@@ -122,89 +202,154 @@
             opacity: 0.9;
         }
 
-        /* Таймлайн прийомів їжі */
-        .meals-timeline {
-            padding: 8px 20px;
-            display: flex;
-            justify-content: space-between;
-            background: white;
-            border-bottom: 1px solid #f0f0f0;
-        }
-
-        .time-dot {
-            text-align: center;
-            flex: 1;
-            position: relative;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        .time-dot.active .dot {
-            background: #6c5ce7;
-            transform: scale(1.2);
-            box-shadow: 0 0 0 4px rgba(108,92,231,0.2);
-        }
-
-        .time-dot.active .time-label {
-            color: #6c5ce7;
-            font-weight: 600;
-        }
-
-        .dot {
-            width: 12px;
-            height: 12px;
-            background: #ddd;
-            border-radius: 50%;
-            margin: 0 auto 8px;
-            transition: all 0.3s ease;
-        }
-
-        .time-label {
-            font-size: 12px;
-            color: #999;
-            transition: color 0.3s ease;
-        }
-
-        /* Секція логування */
-        .log-section {
-            padding: 20px;
-        }
-
-        .log-card {
-            background: linear-gradient(135deg, #f8f9fa, #fff);
+        /* Графік */
+        .chart-section {
+            margin: 20px;
+            padding: 16px;
+            background: #f8f9fa;
             border-radius: 24px;
-            padding: 20px;
-            margin-bottom: 20px;
-            border: 1px solid #f0f0f0;
-            transition: all 0.3s ease;
-            animation: fadeInUp 0.5s ease;
-            cursor: pointer;
         }
 
-        .log-card:active {
+        .chart-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #1a1a2e;
+            margin-bottom: 16px;
+        }
+
+        .chart-bars {
+            display: flex;
+            justify-content: space-around;
+            align-items: flex-end;
+            height: 150px;
+            gap: 8px;
+        }
+
+        .chart-bar {
+            flex: 1;
+            background: linear-gradient(180deg, #6c5ce7, #a855f7);
+            border-radius: 8px 8px 4px 4px;
+            transition: height 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            min-height: 4px;
+        }
+
+        .chart-label {
+            text-align: center;
+            font-size: 10px;
+            color: #999;
+            margin-top: 8px;
+        }
+
+        /* Кнопка LOG MEAL (стиль як на концепті) */
+        .log-meal-btn {
+            background: linear-gradient(135deg, #6c5ce7, #a855f7);
+            margin: 0 20px 20px;
+            padding: 20px;
+            border-radius: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 10px 25px rgba(108,92,231,0.3);
+        }
+
+        .log-meal-btn:active {
             transform: scale(0.98);
         }
 
-        .log-icon {
-            font-size: 32px;
-            margin-bottom: 12px;
+        .log-meal-left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
         }
 
-        .log-title {
+        .log-meal-icon {
+            font-size: 40px;
+        }
+
+        .log-meal-text {
+            color: white;
+        }
+
+        .log-meal-title {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .log-meal-subtitle {
+            font-size: 13px;
+            opacity: 0.9;
+        }
+
+        .log-meal-arrow {
+            font-size: 24px;
+            color: white;
+            opacity: 0.8;
+        }
+
+        /* Список прийомів їжі */
+        .meals-list {
+            margin: 0 20px 20px;
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .section-header h3 {
             font-size: 18px;
+            color: #1a1a2e;
+        }
+
+        .meal-item {
+            background: #f8f9fa;
+            border-radius: 20px;
+            padding: 16px;
+            margin-bottom: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.3s ease;
+            animation: fadeInUp 0.3s ease;
+        }
+
+        .meal-info {
+            flex: 1;
+        }
+
+        .meal-name {
             font-weight: 600;
             color: #1a1a2e;
             margin-bottom: 4px;
         }
 
-        .log-subtitle {
-            font-size: 13px;
+        .meal-time {
+            font-size: 11px;
+            color: #999;
+        }
+
+        .meal-calories {
+            font-weight: 700;
+            color: #6c5ce7;
+            font-size: 18px;
+        }
+
+        .meal-macros {
+            display: flex;
+            gap: 12px;
+            margin-top: 4px;
+            font-size: 11px;
             color: #666;
         }
 
         /* Рекомендації */
         .recommendations-section {
-            padding: 0 20px 20px;
+            margin: 0 20px 20px;
         }
 
         .section-title {
@@ -224,7 +369,6 @@
             gap: 16px;
             border: 1px solid #f0f0f0;
             transition: all 0.3s ease;
-            animation: fadeInUp 0.5s ease;
             cursor: pointer;
         }
 
@@ -271,8 +415,47 @@
             transition: all 0.3s ease;
         }
 
-        .log-button:active {
-            transform: scale(0.95);
+        /* Сторінка Meal Plans */
+        .meal-plans-page {
+            display: none;
+            padding: 20px;
+            min-height: 100vh;
+            background: white;
+        }
+
+        .meal-plans-page.active {
+            display: block;
+        }
+
+        .meal-plan-card {
+            background: linear-gradient(135deg, #f8f9fa, #fff);
+            border-radius: 20px;
+            padding: 16px;
+            margin-bottom: 16px;
+            border: 1px solid #f0f0f0;
+            transition: all 0.3s ease;
+        }
+
+        .meal-plan-card h3 {
+            font-size: 18px;
+            margin-bottom: 8px;
+            color: #1a1a2e;
+        }
+
+        .meal-plan-card p {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 12px;
+        }
+
+        .meal-plan-btn {
+            background: linear-gradient(135deg, #6c5ce7, #a855f7);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 13px;
+            cursor: pointer;
         }
 
         /* Нижня навігація */
@@ -373,49 +556,6 @@
             color: #999;
         }
 
-        /* Сторінка Meal Plans */
-        .meal-plans-page {
-            display: none;
-            padding: 20px;
-            min-height: 100vh;
-            background: white;
-        }
-
-        .meal-plans-page.active {
-            display: block;
-        }
-
-        .meal-plan-card {
-            background: linear-gradient(135deg, #f8f9fa, #fff);
-            border-radius: 20px;
-            padding: 16px;
-            margin-bottom: 16px;
-            border: 1px solid #f0f0f0;
-            transition: all 0.3s ease;
-        }
-
-        .meal-plan-card h3 {
-            font-size: 18px;
-            margin-bottom: 8px;
-            color: #1a1a2e;
-        }
-
-        .meal-plan-card p {
-            font-size: 14px;
-            color: #666;
-            margin-bottom: 12px;
-        }
-
-        .meal-plan-btn {
-            background: linear-gradient(135deg, #6c5ce7, #a855f7);
-            color: white;
-            border: none;
-            padding: 8px 16px;
-            border-radius: 20px;
-            font-size: 13px;
-            cursor: pointer;
-        }
-
         /* Анімації */
         @keyframes fadeInUp {
             from {
@@ -466,6 +606,20 @@
                 <div class="subtitle">Готові відстежувати харчування?</div>
             </div>
 
+            <!-- Календар -->
+            <div class="calendar-section">
+                <div class="calendar-header">
+                    <button id="prevMonthBtn">←</button>
+                    <span id="currentMonthYear" style="font-weight: 600;"></span>
+                    <button id="nextMonthBtn">→</button>
+                </div>
+                <div class="calendar-weekdays">
+                    <span>Пн</span><span>Вт</span><span>Ср</span><span>Чт</span><span>Пт</span><span>Сб</span><span>Нд</span>
+                </div>
+                <div id="calendarDays" class="calendar-days"></div>
+            </div>
+
+            <!-- Картка калорій -->
             <div class="calories-card">
                 <div class="calories-label">🔥 Залишилось калорій</div>
                 <div class="calories-value" id="caloriesRemaining">1450 <small>ккал</small></div>
@@ -479,40 +633,38 @@
                 </div>
             </div>
 
-            <div class="meals-timeline" id="mealsTimeline">
-                <div class="time-dot active" data-time="08:00">
-                    <div class="dot"></div>
-                    <div class="time-label">08:00</div>
-                </div>
-                <div class="time-dot" data-time="12:00">
-                    <div class="dot"></div>
-                    <div class="time-label">12:00</div>
-                </div>
-                <div class="time-dot" data-time="15:00">
-                    <div class="dot"></div>
-                    <div class="time-label">15:00</div>
-                </div>
-                <div class="time-dot" data-time="18:00">
-                    <div class="dot"></div>
-                    <div class="time-label">18:00</div>
-                </div>
-                <div class="time-dot" data-time="21:00">
-                    <div class="dot"></div>
-                    <div class="time-label">21:00</div>
+            <!-- Графік калорій за тиждень -->
+            <div class="chart-section">
+                <div class="chart-title">📊 Калорії за тиждень</div>
+                <div id="weeklyChart" class="chart-bars">
+                    <!-- Динамічні бари -->
                 </div>
             </div>
 
-            <div class="log-section">
-                <div class="log-card" id="logMealBtn">
-                    <div class="log-icon">📸</div>
-                    <div class="log-title">ДОДАТИ СТРАВУ (AI ФОТО)</div>
-                    <div class="log-subtitle">Сфотографуйте вашу їжу</div>
+            <!-- Кнопка LOG MEAL (як на концепті) -->
+            <div class="log-meal-btn" id="logMealBtn">
+                <div class="log-meal-left">
+                    <div class="log-meal-icon">📸</div>
+                    <div class="log-meal-text">
+                        <div class="log-meal-title">LOG MEAL (AI PHOTO)</div>
+                        <div class="log-meal-subtitle">Take photos of your food</div>
+                    </div>
                 </div>
+                <div class="log-meal-arrow">→</div>
             </div>
 
+            <!-- Список прийомів їжі -->
+            <div class="meals-list">
+                <div class="section-header">
+                    <h3>🍽️ Сьогоднішні прийоми</h3>
+                    <span id="mealsCount">0</span>
+                </div>
+                <div id="mealsList"></div>
+            </div>
+
+            <!-- Рекомендації -->
             <div class="recommendations-section">
                 <div class="section-title">🤖 AI-рекомендації</div>
-                <div class="section-title" style="font-size: 14px; color: #666; margin-top: -8px;">Для збалансованого дня, спробуйте:</div>
                 <div id="recommendationsList"></div>
             </div>
         </div>
@@ -590,23 +742,82 @@
             meals: [],
             caloriesConsumed: 550,
             calorieGoal: 2000,
-            userName: 'Користувач'
+            userName: 'Користувач',
+            weeklyData: [320, 450, 280, 510, 430, 380, 550]
         };
 
-        // Отримання імені з профілю
-        async function loadUserName() {
-            if (telegramId) {
-                try {
-                    const response = await fetch(`/api/user/${telegramId}`);
-                    const data = await response.json();
-                    if (!data.error && data.first_name) {
-                        currentData.userName = data.first_name;
-                        document.getElementById('userName').innerText = currentData.userName;
-                    }
-                } catch (e) {
-                    console.log('Using default name');
-                }
+        // Календар
+        let currentDate = new Date();
+        let selectedDate = new Date();
+        let mealsByDate = {};
+
+        function updateCalendar() {
+            const year = currentDate.getFullYear();
+            const month = currentDate.getMonth();
+            const firstDay = new Date(year, month, 1);
+            const startDay = firstDay.getDay() || 7;
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            
+            const monthNames = ['Січень', 'Лютий', 'Березень', 'Квітень', 'Травень', 'Червень', 'Липень', 'Серпень', 'Вересень', 'Жовтень', 'Листопад', 'Грудень'];
+            document.getElementById('currentMonthYear').innerText = `${monthNames[month]} ${year}`;
+            
+            let calendarHtml = '';
+            for (let i = 1; i < startDay; i++) {
+                calendarHtml += '<div></div>';
             }
+            
+            for (let day = 1; day <= daysInMonth; day++) {
+                const dateKey = `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+                const hasMeal = mealsByDate[dateKey] && mealsByDate[dateKey].length > 0;
+                const isToday = day === new Date().getDate() && month === new Date().getMonth() && year === new Date().getFullYear();
+                const isSelected = day === selectedDate.getDate() && month === selectedDate.getMonth() && year === selectedDate.getFullYear();
+                
+                calendarHtml += `<div class="calendar-day ${isToday ? 'today' : ''} ${isSelected ? 'selected' : ''} ${hasMeal ? 'has-meal' : ''}" onclick="selectDate(${year}, ${month}, ${day})">${day}</div>`;
+            }
+            document.getElementById('calendarDays').innerHTML = calendarHtml;
+        }
+
+        function selectDate(year, month, day) {
+            selectedDate = new Date(year, month, day);
+            updateCalendar();
+            loadMealsForDate(selectedDate);
+        }
+
+        function loadMealsForDate(date) {
+            const dateKey = `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
+            const meals = mealsByDate[dateKey] || [];
+            renderMeals(meals);
+            
+            // Оновлюємо спожиті калорії для обраної дати
+            const totalCalories = meals.reduce((sum, m) => sum + (m.calories || 0), 0);
+            document.getElementById('consumedCalories').innerText = totalCalories;
+            const remaining = currentData.calorieGoal - totalCalories;
+            document.getElementById('remainingCalories').innerText = Math.max(0, remaining);
+            document.getElementById('caloriesRemaining').innerHTML = `${Math.max(0, remaining)} <small>ккал</small>`;
+            const progress = (totalCalories / currentData.calorieGoal) * 100;
+            document.getElementById('calorieProgress').style.width = `${Math.min(progress, 100)}%`;
+        }
+
+        document.getElementById('prevMonthBtn').onclick = () => {
+            currentDate.setMonth(currentDate.getMonth() - 1);
+            updateCalendar();
+        };
+        
+        document.getElementById('nextMonthBtn').onclick = () => {
+            currentDate.setMonth(currentDate.getMonth() + 1);
+            updateCalendar();
+        };
+
+        // Графік
+        function renderChart() {
+            const container = document.getElementById('weeklyChart');
+            const maxValue = Math.max(...currentData.weeklyData, 1);
+            container.innerHTML = currentData.weeklyData.map((value, index) => `
+                <div style="flex: 1; text-align: center;">
+                    <div class="chart-bar" style="height: ${(value / maxValue) * 120}px;"></div>
+                    <div class="chart-label">${['Пн','Вт','Ср','Чт','Пт','Сб','Нд'][index]}</div>
+                </div>
+            `).join('');
         }
 
         // Рекомендації
@@ -670,7 +881,9 @@
         }
 
         function addMeal(meal) {
-            currentData.meals.unshift({
+            const todayKey = new Date().toISOString().split('T')[0];
+            if (!mealsByDate[todayKey]) mealsByDate[todayKey] = [];
+            mealsByDate[todayKey].push({
                 ...meal,
                 time: new Date().toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' }),
                 timestamp: new Date().toISOString()
@@ -680,26 +893,50 @@
             updateUI();
             saveToLocalStorage();
             showToast(`✅ ${meal.name} додано! +${meal.calories} ккал`);
+            loadMealsForDate(new Date());
+        }
+
+        function renderMeals(meals) {
+            const container = document.getElementById('mealsList');
+            document.getElementById('mealsCount').innerText = meals.length;
+            if (meals.length === 0) {
+                container.innerHTML = '<div style="text-align: center; padding: 40px; color: #999;">Немає прийомів їжі</div>';
+                return;
+            }
+            container.innerHTML = meals.map(meal => `
+                <div class="meal-item">
+                    <div class="meal-info">
+                        <div class="meal-name">${meal.name}</div>
+                        <div class="meal-time">${meal.time || new Date(meal.timestamp).toLocaleTimeString('uk-UA')}</div>
+                        <div class="meal-macros">
+                            <span>🥩 ${meal.protein || 0}г</span>
+                            <span>🧈 ${meal.fat || 0}г</span>
+                            <span>🍚 ${meal.carbs || 0}г</span>
+                        </div>
+                    </div>
+                    <div class="meal-calories">${meal.calories} ккал</div>
+                </div>
+            `).join('');
         }
 
         function updateUI() {
-            const remaining = currentData.calorieGoal - currentData.caloriesConsumed;
-            const progress = (currentData.caloriesConsumed / currentData.calorieGoal) * 100;
+            const todayKey = new Date().toISOString().split('T')[0];
+            const todayMeals = mealsByDate[todayKey] || [];
+            const totalCalories = todayMeals.reduce((sum, m) => sum + (m.calories || 0), 0);
+            const remaining = currentData.calorieGoal - totalCalories;
+            const progress = (totalCalories / currentData.calorieGoal) * 100;
             
             document.getElementById('caloriesRemaining').innerHTML = `${Math.max(0, remaining)} <small>ккал</small>`;
-            document.getElementById('consumedCalories').innerText = currentData.caloriesConsumed;
+            document.getElementById('consumedCalories').innerText = totalCalories;
             document.getElementById('remainingCalories').innerText = Math.max(0, remaining);
             document.getElementById('calorieProgress').style.width = `${Math.min(progress, 100)}%`;
+            document.getElementById('calorieGoal').innerText = currentData.calorieGoal;
         }
 
         async function analyzeAndSave() {
             const fileInput = document.getElementById('mealPhoto');
             const file = fileInput.files[0];
-            
-            if (!file) {
-                alert('Оберіть фото спочатку');
-                return;
-            }
+            if (!file) { alert('Оберіть фото спочатку'); return; }
             
             const resultDiv = document.getElementById('analysisResult');
             resultDiv.style.display = 'block';
@@ -709,13 +946,8 @@
             formData.append('photo', file);
             
             try {
-                const response = await fetch('/api/analyze', {
-                    method: 'POST',
-                    body: formData
-                });
-                
+                const response = await fetch('/api/analyze', { method: 'POST', body: formData });
                 const data = await response.json();
-                
                 if (response.ok) {
                     resultDiv.innerHTML = `
                         <div style="background: #e8f5e9; padding: 12px; border-radius: 12px;">
@@ -748,62 +980,41 @@
             if (plan === 'veggie') calories = 1900;
             
             currentData.calorieGoal = calories;
-            document.getElementById('calorieGoal').innerText = calories;
             updateUI();
             saveToLocalStorage();
-            showToast(`✅ План "Білковий" обрано! Норма: ${calories} ккал/день`);
-            
-            // Перемикаємось на головну
+            showToast(`✅ План обрано! Норма: ${calories} ккал/день`);
             switchPage('dashboard');
         }
 
         function saveToLocalStorage() {
             if (telegramId) {
-                localStorage.setItem(`aura_meals_${telegramId}`, JSON.stringify(currentData.meals));
-                localStorage.setItem(`aura_calories_${telegramId}`, currentData.caloriesConsumed);
-                localStorage.setItem(`aura_goal_${telegramId}`, currentData.calorieGoal);
+                localStorage.setItem(`aura_meals_${telegramId}`, JSON.stringify(mealsByDate));
+                localStorage.setItem(`aura_calorie_goal_${telegramId}`, currentData.calorieGoal);
             }
         }
 
         function loadFromLocalStorage() {
             if (telegramId) {
                 const savedMeals = localStorage.getItem(`aura_meals_${telegramId}`);
-                if (savedMeals) currentData.meals = JSON.parse(savedMeals);
-                const savedCalories = localStorage.getItem(`aura_calories_${telegramId}`);
-                if (savedCalories) currentData.caloriesConsumed = parseInt(savedCalories);
-                const savedGoal = localStorage.getItem(`aura_goal_${telegramId}`);
+                if (savedMeals) mealsByDate = JSON.parse(savedMeals);
+                const savedGoal = localStorage.getItem(`aura_calorie_goal_${telegramId}`);
                 if (savedGoal) currentData.calorieGoal = parseInt(savedGoal);
             }
             updateUI();
+            updateCalendar();
+            loadMealsForDate(new Date());
         }
 
         function showToast(message) {
             const toast = document.createElement('div');
             toast.textContent = message;
-            toast.style.cssText = `
-                position: fixed;
-                bottom: 80px;
-                left: 50%;
-                transform: translateX(-50%);
-                background: #1a1a2e;
-                color: white;
-                padding: 12px 24px;
-                border-radius: 30px;
-                font-size: 14px;
-                z-index: 1000;
-                animation: fadeInUp 0.3s ease;
-            `;
+            toast.style.cssText = `position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background: #1a1a2e; color: white; padding: 12px 24px; border-radius: 30px; font-size: 14px; z-index: 1000; animation: fadeInUp 0.3s ease;`;
             document.body.appendChild(toast);
             setTimeout(() => toast.remove(), 2000);
         }
 
-        function openModal() {
-            document.getElementById('mealModal').style.display = 'flex';
-        }
-
-        function closeModal() {
-            document.getElementById('mealModal').style.display = 'none';
-        }
+        function openModal() { document.getElementById('mealModal').style.display = 'flex'; }
+        function closeModal() { document.getElementById('mealModal').style.display = 'none'; }
 
         function switchPage(page) {
             const dashboardPage = document.getElementById('dashboardPage');
@@ -825,57 +1036,36 @@
                 item.addEventListener('click', () => {
                     document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active'));
                     item.classList.add('active');
-                    
                     const navName = item.dataset.nav;
-                    if (navName === 'log') {
-                        openModal();
-                    } else if (navName === 'dashboard') {
-                        switchPage('dashboard');
-                    } else if (navName === 'mealplans') {
-                        switchPage('mealplans');
-                    } else if (navName === 'profile') {
-                        window.location.href = `/settings?user_id=${telegramId}`;
-                    }
+                    if (navName === 'log') openModal();
+                    else if (navName === 'dashboard') switchPage('dashboard');
+                    else if (navName === 'mealplans') switchPage('mealplans');
+                    else if (navName === 'profile') window.location.href = `/settings?user_id=${telegramId}`;
                 });
             });
         }
 
-        function setupTimeline() {
-            document.querySelectorAll('.time-dot').forEach(dot => {
-                dot.addEventListener('click', () => {
-                    document.querySelectorAll('.time-dot').forEach(d => d.classList.remove('active'));
-                    dot.classList.add('active');
-                    showToast(`Показую прийоми за ${dot.dataset.time}`);
-                });
-            });
-        }
-
-        async function loadServerData() {
+        async function loadUserName() {
             if (telegramId) {
                 try {
-                    const userRes = await fetch(`/api/user/${telegramId}`);
-                    const userData = await userRes.json();
-                    if (!userData.error && userData.daily_calorie_goal) {
-                        currentData.calorieGoal = userData.daily_calorie_goal;
-                        document.getElementById('calorieGoal').innerText = currentData.calorieGoal;
-                        updateUI();
+                    const response = await fetch(`/api/user/${telegramId}`);
+                    const data = await response.json();
+                    if (!data.error && data.first_name) {
+                        currentData.userName = data.first_name;
+                        document.getElementById('userName').innerText = currentData.userName;
                     }
-                } catch (e) {
-                    console.log('Сервер недоступний, використовую локальні дані');
-                }
+                } catch (e) {}
             }
         }
 
         renderRecommendations();
         setupNavigation();
-        setupTimeline();
         loadFromLocalStorage();
-        loadServerData();
         loadUserName();
+        renderChart();
 
         document.getElementById('logMealBtn').addEventListener('click', openModal);
         
-        // Показуємо головну сторінку
         switchPage('dashboard');
     </script>
 </body>
