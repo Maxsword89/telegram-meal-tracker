@@ -1,5 +1,5 @@
 # ============================================
-# Файл: main.py (ПОВНИЙ З ТЕСТОМ GEMINI API)
+# Файл: main.py (ПОВНИЙ ВИПРАВЛЕНИЙ)
 # ============================================
 import os
 import logging
@@ -114,6 +114,7 @@ async def lifespan(app: FastAPI):
     
     if app_instance is None:
         logger.info("Creating bot application...")
+        # Новий синтаксис для python-telegram-bot 21.x
         app_instance = Application.builder().token(BOT_TOKEN).build()
         setup_handlers(app_instance)
         await app_instance.initialize()
@@ -336,7 +337,7 @@ async def get_weekly_report(telegram_id: int):
 
 @app.get("/test-gemini")
 async def test_gemini():
-    """Тест Gemini API - перевіряє чи ключ працює"""
+    """Test Gemini API - checks if API key works"""
     try:
         api_key = os.getenv("GEMINI_API_KEY")
         if not api_key:
@@ -348,7 +349,7 @@ async def test_gemini():
         
         logger.info(f"Testing Gemini API with key: {api_key[:10]}...")
         
-        # Тест 1: Перевірка ключа через простий текстовий запит
+        # Test with simple text request
         url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={api_key}"
         payload = {
             "contents": [{"parts": [{"text": "Say 'API key is valid'"}]}]
@@ -377,9 +378,9 @@ async def test_gemini():
             elif response.status_code == 429:
                 return {
                     "status": "error",
-                    "message": "QUOTA EXCEEDED - Free tier limit reached. Try again later or upgrade.",
+                    "message": "QUOTA EXCEEDED - Free tier limit reached. Try again later or create a new API key.",
                     "status_code": 429,
-                    "solution": "Wait 1-2 minutes or create a new API key"
+                    "solution": "Create a new API key at https://makersuite.google.com/app/apikey"
                 }
             elif response.status_code == 403:
                 return {
@@ -416,7 +417,7 @@ async def test_gemini():
 
 @app.get("/test-db")
 async def test_db():
-    """Тест стану бази даних"""
+    """Test database status"""
     return JSONResponse({
         "status": "connected",
         "mode": "in-memory",
@@ -430,7 +431,7 @@ async def test_db():
 
 @app.get("/health")
 async def health():
-    """Перевірка стану сервісу"""
+    """Health check endpoint"""
     gemini_status = "initialized" if gemini_service and hasattr(gemini_service, 'available') and gemini_service.available else "failed"
     return JSONResponse({
         "status": "healthy",
