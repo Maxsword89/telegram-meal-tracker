@@ -1,5 +1,5 @@
 # ============================================
-# Файл: main.py (ПОВНИЙ З БЖУ)
+# Файл: main.py (ПОВНИЙ З ДІАГНОСТИКОЮ GEMINI)
 # ============================================
 import os
 import logging
@@ -207,13 +207,11 @@ async def update_user(telegram_id: int, profile: dict):
         goal = profile.get("goal", "maintain")
         activity_level = profile.get("activity_level", "moderate")
         
-        # Якщо БЖУ вже передані з фронту - використовуємо їх
         protein_goal = profile.get("protein_goal")
         fat_goal = profile.get("fat_goal")
         carbs_goal = profile.get("carbs_goal")
         
         if protein_goal is None or fat_goal is None or carbs_goal is None:
-            # Розраховуємо БЖУ
             profile_data = {
                 "age": int(age) if age else 25,
                 "gender": profile.get("gender", "male"),
@@ -446,6 +444,93 @@ async def test_gemini():
             "message": str(e),
             "solution": "Check server logs for details"
         }
+
+# ============================================
+# DIAGNOSTIC ENDPOINT FOR GEMINI
+# ============================================
+
+@app.get("/debug-gemini")
+async def debug_gemini():
+    """Діагностика Gemini API - перевіряє всі можливі моделі"""
+    import httpx
+    
+    api_key = os.getenv("GEMINI_API_KEY")
+    
+    result = {
+        "timestamp": datetime.utcnow().isoformat(),
+        "api_key_present": bool(api_key),
+        "api_key_preview": api_key[:15] + "..." if api_key else None,
+        "models_tested": [],
+        "available_model": None,
+        "all_failed": True
+    }
+    
+    if not api_key:
+        result["error"] = "GEMINI_API_KEY not set in environment variables"
+        result["solution"] = "Add GEMINI_API_KEY in Render Environment Variables"
+        return result
+    
+    models_to_test = [
+        "gemini-2.0-flash",
+        "gemini-1.5-flash",
+        "gemini-1.5-pro",
+        "gemini-pro"
+    ]
+    
+    for model in models_to_test:
+        test_result = {
+            "model": model,
+            "status": "testing",
+            "status_code": None,
+            "error": None
+        }
+        
+        try:
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
+            payload = {
+                "contents": [{"parts": [{"text": "Test"}]}]
+            }
+            
+            async with httpx.AsyncClient() as client:
+                response = await client.post(url, json=payload, timeout=10.0)
+                test_result["status_code"] = response.status_code
+                
+                if response.status_code == 200:
+                    test_result["status"] = "available"
+                    result["available_model"] = model
+                    result["all_failed"] = False
+                elif response.status_code == 429:
+                    test_result["status"] = "quota_exceeded"
+                    test_result["error"] = "Quota exceeded for this model"
+                elif response.status_code == 403:
+                    test_result["status"] = "invalid_key"
+                    test_result["error"] = "API key invalid or expired"
+                elif response.status_code == 404:
+                    test_result["status"] = "not_found"
+                    test_result["error"] = "Model not found"
+                else:
+                    test_result["status"] = "error"
+                    test_result["error"] = response.text[:100]
+                    
+        except httpx.TimeoutException:
+            test_result["status"] = "timeout"
+            test_result["error"] = "Connection timeout"
+        except Exception as e:
+            test_result["status"] = "exception"
+            test_result["error"] = str(e)[:100]
+        
+        result["models_tested"].append(test_result)
+    
+    # Рекомендації
+    if result["all_failed"]:
+        if any(m["status_code"] == 429 for m in result["models_tested"]):
+            result["recommendation"] = "Create a new API key at https://makersuite.google.com/app/apikey"
+        elif any(m["status_code"] == 403 for m in result["models_tested"]):
+            result["recommendation"] = "API key is invalid. Create a new one at https://makersuite.google.com/app/apikey"
+        else:
+            result["recommendation"] = "Check your API key and billing at https://makersuite.google.com/app/apikey"
+    
+    return result
 
 # ============================================
 # TEST DATABASE ENDPOINT
