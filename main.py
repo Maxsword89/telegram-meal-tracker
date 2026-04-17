@@ -1,5 +1,5 @@
 # ============================================
-# Файл: main.py (ПОВНИЙ ВИПРАВЛЕНИЙ)
+# Файл: main.py (ПОВНИЙ З БЖУ)
 # ============================================
 import os
 import logging
@@ -204,27 +204,44 @@ async def update_user(telegram_id: int, profile: dict):
         age = profile.get("age", 25)
         height = profile.get("height", 170)
         weight = profile.get("weight", 70)
+        goal = profile.get("goal", "maintain")
+        activity_level = profile.get("activity_level", "moderate")
         
-        profile_data = {
+        # Якщо БЖУ вже передані з фронту - використовуємо їх
+        protein_goal = profile.get("protein_goal")
+        fat_goal = profile.get("fat_goal")
+        carbs_goal = profile.get("carbs_goal")
+        
+        if protein_goal is None or fat_goal is None or carbs_goal is None:
+            # Розраховуємо БЖУ
+            profile_data = {
+                "age": int(age) if age else 25,
+                "gender": profile.get("gender", "male"),
+                "height": int(height) if height else 170,
+                "weight": float(weight) if weight else 70,
+                "activity_level": activity_level,
+                "goal": goal,
+            }
+            daily_calories = nutrition_calculator.calculate_tdee(profile_data)
+            macros = nutrition_calculator.calculate_macros(daily_calories, float(weight), goal)
+            protein_goal = macros["protein"]
+            fat_goal = macros["fat"]
+            carbs_goal = macros["carbs"]
+        else:
+            daily_calories = profile.get("daily_calorie_goal", 2000)
+        
+        user_data = {
+            "first_name": profile.get("first_name", "Користувач"),
             "age": int(age) if age else 25,
             "gender": profile.get("gender", "male"),
             "height": int(height) if height else 170,
             "weight": float(weight) if weight else 70,
-            "activity_level": profile.get("activity_level", "moderate"),
-            "goal": profile.get("goal", "maintain"),
-        }
-        
-        daily_calories = nutrition_calculator.calculate_tdee(profile_data)
-        
-        user_data = {
-            "first_name": profile.get("first_name", "Користувач"),
-            "age": profile_data["age"],
-            "gender": profile_data["gender"],
-            "height": profile_data["height"],
-            "weight": profile_data["weight"],
-            "activity_level": profile_data["activity_level"],
-            "goal": profile_data["goal"],
+            "activity_level": activity_level,
+            "goal": goal,
             "daily_calorie_goal": daily_calories,
+            "protein_goal": protein_goal,
+            "fat_goal": fat_goal,
+            "carbs_goal": carbs_goal,
             "updated_at": datetime.utcnow().isoformat()
         }
         
@@ -317,7 +334,16 @@ async def get_weekly_report(telegram_id: int):
             return JSONResponse({"error": "No meals found"}, status_code=404)
         
         total_calories = sum(m.get("calories", 0) for m in meals)
-        avg_per_day = {"calories": total_calories / 7}
+        total_protein = sum(m.get("protein", 0) for m in meals)
+        total_fat = sum(m.get("fat", 0) for m in meals)
+        total_carbs = sum(m.get("carbs", 0) for m in meals)
+        
+        avg_per_day = {
+            "calories": total_calories / 7,
+            "protein": total_protein / 7,
+            "fat": total_fat / 7,
+            "carbs": total_carbs / 7
+        }
         user_profile = get_user_profile(telegram_id)
         
         ai_analysis = "📊 Weekly Report\n\n"
@@ -327,7 +353,17 @@ async def get_weekly_report(telegram_id: int):
             except Exception as e:
                 ai_analysis = f"⚠️ Could not generate AI analysis: {str(e)[:100]}"
         
-        return JSONResponse({"ai_analysis": ai_analysis})
+        return JSONResponse({
+            "total": {
+                "calories": total_calories,
+                "protein": total_protein,
+                "fat": total_fat,
+                "carbs": total_carbs
+            },
+            "average_per_day": avg_per_day,
+            "meals_count": len(meals),
+            "ai_analysis": ai_analysis
+        })
     except Exception as e:
         return JSONResponse({"error": str(e)}, status_code=500)
 
