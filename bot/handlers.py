@@ -9,7 +9,8 @@ from telegram.constants import ParseMode
 
 logger = logging.getLogger(__name__)
 
-WEBAPP_URL = os.getenv("WEBAPP_URL", "https://telegram-food-bot-jedx.onrender.com")
+# НОВА АДРЕСА
+WEBAPP_URL = os.getenv("WEBAPP_URL", "https://telegram-meal-tracker.onrender.com")
 
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle /start command - show main menu"""
@@ -19,19 +20,19 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
         [
             InlineKeyboardButton(
-                text="📊 DASHBOARD",
+                text="📊 ГОЛОВНА",
                 web_app=WebAppInfo(url=f"{WEBAPP_URL}/?user_id={user.id}")
             )
         ],
         [
             InlineKeyboardButton(
-                text="📸 ADD MEAL",
+                text="📸 ДОДАТИ СТРАВУ",
                 web_app=WebAppInfo(url=f"{WEBAPP_URL}/add-meal?user_id={user.id}")
             )
         ],
         [
             InlineKeyboardButton(
-                text="⚙️ SETTINGS",
+                text="⚙️ НАЛАШТУВАННЯ",
                 web_app=WebAppInfo(url=f"{WEBAPP_URL}/settings?user_id={user.id}")
             )
         ]
@@ -39,17 +40,17 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     reply_markup = InlineKeyboardMarkup(keyboard)
     
     welcome_text = f"""
-🍽️ *Aura Health - Food Tracker*
+🍽️ *Aura Health - Трекер харчування*
 
-Welcome, {user.first_name}! 👋
+Вітаю, {user.first_name}! 👋
 
-Your personal AI nutritionist powered by *Gemini 2.0 Flash*.
+Твій персональний AI-нутриціолог.
 
-*📊 DASHBOARD* - Track your daily progress
-*📸 ADD MEAL* - Analyze food with AI
-*⚙️ SETTINGS* - Manage your profile
+*📊 ГОЛОВНА* - Відстежуй прогрес
+*📸 ДОДАТИ СТРАВУ* - Аналіз фото через AI
+*⚙️ НАЛАШТУВАННЯ* - Керуй профілем
 
-Tap the buttons below to get started! 🚀
+Натискай на кнопки нижче! 🚀
 """
     
     await update.message.reply_text(
@@ -66,19 +67,19 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
         [
             InlineKeyboardButton(
-                text="📊 DASHBOARD",
+                text="📊 ГОЛОВНА",
                 web_app=WebAppInfo(url=f"{WEBAPP_URL}/?user_id={user.id}")
             )
         ],
         [
             InlineKeyboardButton(
-                text="📸 ADD MEAL",
+                text="📸 ДОДАТИ СТРАВУ",
                 web_app=WebAppInfo(url=f"{WEBAPP_URL}/add-meal?user_id={user.id}")
             )
         ],
         [
             InlineKeyboardButton(
-                text="⚙️ SETTINGS",
+                text="⚙️ НАЛАШТУВАННЯ",
                 web_app=WebAppInfo(url=f"{WEBAPP_URL}/settings?user_id={user.id}")
             )
         ]
@@ -86,24 +87,21 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     reply_markup = InlineKeyboardMarkup(keyboard)
     
     help_text = """
-📖 *Help Guide*
+📖 *Довідка*
 
-*Commands:*
-/start - Main menu
-/help - This guide
+*Команди:*
+/start - Головне меню
+/help - Ця довідка
 
-*How to use:*
-1️⃣ Set up your profile in Settings
-2️⃣ Take a photo of your meal
-3️⃣ AI will analyze calories and nutrients
-4️⃣ Track your progress on Dashboard
+*Як користуватися:*
+1️⃣ Налаштуй профіль в Settings
+2️⃣ Сфотографуй їжу
+3️⃣ AI визначить калорії та БЖУ
+4️⃣ Стеж за прогресом на Dashboard
 
-*Tips:*
-- Take photos in good lighting
-- Include the whole plate
-- Be consistent with logging
-
-Need help? Contact support.
+*Поради:*
+- Фотографуйте при хорошому освітленні
+- Додавайте прийоми регулярно
 """
     
     await update.message.reply_text(
@@ -119,19 +117,19 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
         [
             InlineKeyboardButton(
-                text="📊 DASHBOARD",
+                text="📊 ГОЛОВНА",
                 web_app=WebAppInfo(url=f"{WEBAPP_URL}/?user_id={user.id}")
             )
         ],
         [
             InlineKeyboardButton(
-                text="📸 ADD MEAL",
+                text="📸 ДОДАТИ СТРАВУ",
                 web_app=WebAppInfo(url=f"{WEBAPP_URL}/add-meal?user_id={user.id}")
             )
         ],
         [
             InlineKeyboardButton(
-                text="⚙️ SETTINGS",
+                text="⚙️ НАЛАШТУВАННЯ",
                 web_app=WebAppInfo(url=f"{WEBAPP_URL}/settings?user_id={user.id}")
             )
         ]
@@ -139,7 +137,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     reply_markup = InlineKeyboardMarkup(keyboard)
     
     await update.message.reply_text(
-        "🍽️ *Main Menu*\n\nChoose an option:",
+        "🍽️ *Головне меню*\n\nОберіть дію:",
         parse_mode=ParseMode.MARKDOWN,
         reply_markup=reply_markup
     )
