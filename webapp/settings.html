@@ -6,7 +6,7 @@
     <title>Налаштування - Aura Health</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f8f9fa; padding: 20px; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f5f5; padding: 20px; }
         .container { max-width: 500px; margin: 0 auto; background: white; border-radius: 32px; padding: 24px; box-shadow: 0 20px 60px rgba(0,0,0,0.1); }
         h1 { font-size: 28px; margin-bottom: 8px; color: #1a1a2e; }
         h2 { font-size: 18px; margin: 24px 0 16px 0; color: #1a1a2e; border-left: 4px solid #6c5ce7; padding-left: 12px; }
@@ -28,12 +28,12 @@
         
         <h2>👤 Мій профіль</h2>
         <form id="profileForm">
-            <div class="form-group"><label>Ім'я</label><input type="text" id="firstName" placeholder="Ваше ім'я"></div>
-            <div class="form-group"><label>Вік (років)</label><input type="number" id="age" placeholder="25"></div>
-            <div class="form-group"><label>Стать</label><select id="gender"><option value="male">Чоловік</option><option value="female">Жінка</option></select></div>
-            <div class="form-group"><label>Зріст (см)</label><input type="number" id="height" placeholder="170"></div>
-            <div class="form-group"><label>Вага (кг)</label><input type="number" id="weight" step="0.1" placeholder="70"></div>
-            <div class="form-group"><label>Рівень активності</label>
+            <div class="form-group"><label>👤 Ім'я</label><input type="text" id="firstName" placeholder="Ваше ім'я" value="Користувач"></div>
+            <div class="form-group"><label>📅 Вік (років)</label><input type="number" id="age" placeholder="25"></div>
+            <div class="form-group"><label>⚧ Стать</label><select id="gender"><option value="male">Чоловік</option><option value="female">Жінка</option></select></div>
+            <div class="form-group"><label>📏 Зріст (см)</label><input type="number" id="height" placeholder="170"></div>
+            <div class="form-group"><label>⚖️ Вага (кг)</label><input type="number" id="weight" step="0.1" placeholder="70"></div>
+            <div class="form-group"><label>🏃 Рівень активності</label>
                 <select id="activityLevel">
                     <option value="sedentary">Сидячий (офісна робота)</option>
                     <option value="light">Легкий (1-3 тренування)</option>
@@ -42,7 +42,7 @@
                     <option value="very_active">Дуже високий (фізична робота)</option>
                 </select>
             </div>
-            <div class="form-group"><label>Моя ціль</label>
+            <div class="form-group"><label>🎯 Моя ціль</label>
                 <select id="goal">
                     <option value="lose">🏃 Схуднення</option>
                     <option value="maintain">⚖️ Підтримка ваги</option>
@@ -115,7 +115,7 @@
                 const response = await fetch(`/api/user/${telegramId}`);
                 const data = await response.json();
                 if (!data.error) {
-                    document.getElementById('firstName').value = data.first_name || '';
+                    document.getElementById('firstName').value = data.first_name || 'Користувач';
                     document.getElementById('age').value = data.age || '';
                     document.getElementById('gender').value = data.gender || 'male';
                     document.getElementById('height').value = data.height || '';
@@ -131,7 +131,7 @@
             e.preventDefault();
             const result = calculateTDEE();
             const profile = {
-                first_name: document.getElementById('firstName').value,
+                first_name: document.getElementById('firstName').value || 'Користувач',
                 age: parseInt(document.getElementById('age').value) || 0,
                 gender: document.getElementById('gender').value,
                 height: parseInt(document.getElementById('height').value) || 0,
@@ -147,18 +147,17 @@
                     body: JSON.stringify(profile)
                 });
                 if (response.ok) {
-                    alert('✅ Профіль збережено! Норма: ' + result.calories + ' ккал/день');
-                    // Оновлюємо localStorage
+                    alert(`✅ Профіль збережено! Норма: ${result.calories} ккал/день`);
                     const saved = localStorage.getItem(`aura_user_${telegramId}`);
                     const userData = saved ? JSON.parse(saved) : {};
                     userData.hasProfile = true;
-                    userData.firstName = profile.first_name || 'Користувач';
+                    userData.firstName = profile.first_name;
                     userData.calorieGoal = result.calories;
                     userData.proteinGoal = result.protein;
                     userData.fatGoal = result.fat;
                     userData.carbsGoal = result.carbs;
                     localStorage.setItem(`aura_user_${telegramId}`, JSON.stringify(userData));
-                    window.location.href = `/?user_id=${telegramId}`;
+                    window.location.href = `/?user_id=${telegramId}&name=${encodeURIComponent(profile.first_name)}`;
                 } else alert('❌ Помилка збереження');
             } catch(e) { alert('❌ Помилка мережі'); }
         };
