@@ -336,6 +336,41 @@
             hasProfile: false 
         };
         
+        // Функція стиснення фото перед відправкою
+        async function compressImage(file) {
+            return new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = (e) => {
+                    const img = new Image();
+                    img.src = e.target.result;
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        let width = img.width;
+                        let height = img.height;
+                        const maxSize = 800;
+                        
+                        if (width > height && width > maxSize) {
+                            height = (height * maxSize) / width;
+                            width = maxSize;
+                        } else if (height > maxSize) {
+                            width = (width * maxSize) / height;
+                            height = maxSize;
+                        }
+                        
+                        canvas.width = width;
+                        canvas.height = height;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, width, height);
+                        
+                        canvas.toBlob((blob) => {
+                            resolve(new File([blob], file.name, { type: 'image/jpeg' }));
+                        }, 'image/jpeg', 0.7);
+                    };
+                };
+            });
+        }
+        
         function loadUserData() {
             if (!telegramId) return;
             const saved = localStorage.getItem(`aura_user_${telegramId}`);
@@ -423,7 +458,6 @@
             document.getElementById('calorieProgress').style.width = `${Math.min(progress,100)}%`;
             document.getElementById('mealsCount').innerText = todayMeals.length;
             
-            // Оновлення БЖУ
             document.getElementById('proteinConsumed').innerText = totalProtein;
             document.getElementById('fatConsumed').innerText = totalFat;
             document.getElementById('carbsConsumed').innerText = totalCarbs;
@@ -562,10 +596,14 @@
         async function analyzeAndSave() {
             const file = document.getElementById('mealPhoto').files[0];
             if(!file){ alert('Оберіть фото'); return; }
+            
+            // Стискаємо фото перед відправкою
+            const compressedFile = await compressImage(file);
+            
             const resultDiv = document.getElementById('analysisResult');
             resultDiv.style.display='block';
             resultDiv.innerHTML='<div style="text-align:center;">🔍 Аналізую...</div>';
-            const fd = new FormData(); fd.append('photo',file);
+            const fd = new FormData(); fd.append('photo', compressedFile);
             try{
                 const res = await fetch('/api/analyze',{method:'POST',body:fd});
                 const data = await res.json();
