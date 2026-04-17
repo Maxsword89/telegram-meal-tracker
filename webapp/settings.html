@@ -3,13 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>Settings - Aura Health</title>
+    <title>Налаштування - Aura Health</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #6c5ce7, #a855f7);
-            min-height: 100vh;
+            background: #f8f9fa;
             padding: 20px;
         }
         .container {
@@ -18,6 +17,7 @@
             background: white;
             border-radius: 32px;
             padding: 24px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.1);
         }
         h1 { font-size: 28px; margin-bottom: 8px; color: #1a1a2e; }
         h2 { font-size: 18px; margin: 24px 0 16px 0; color: #1a1a2e; border-left: 4px solid #6c5ce7; padding-left: 12px; }
@@ -31,110 +31,72 @@
             color: white; border: none; border-radius: 30px; font-size: 16px; font-weight: 600;
             cursor: pointer; margin-top: 16px;
         }
-        .test-btn {
-            width: 100%; padding: 14px; background: #ff9800; color: white;
-            border: none; border-radius: 30px; font-size: 16px; font-weight: 600;
-            cursor: pointer; margin: 16px 0;
-        }
-        .test-result {
-            background: #f8f9fa; border-radius: 20px; padding: 16px;
-            margin-top: 16px; display: none;
-        }
-        .test-result.success { background: #e8f5e9; color: #2e7d32; }
-        .test-result.error { background: #ffebee; color: #c62828; }
-        .test-result.loading { background: #e3f2fd; color: #1976d2; }
         .back-btn { background: #666; margin-top: 16px; }
-        .status-badge {
-            display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 12px; margin-left: 8px;
-        }
-        .status-badge.active { background: #4caf50; color: white; }
-        .status-badge.inactive { background: #f44336; color: white; }
         .info-box {
             background: #e3f2fd; border-radius: 20px; padding: 16px; margin: 16px 0;
             border-left: 4px solid #2196f3;
         }
-        .info-box p { font-size: 14px; color: #1976d2; margin-bottom: 8px; }
-        .info-box ul { margin-left: 20px; font-size: 13px; color: #1565c0; }
+        .info-box p { font-size: 14px; color: #1976d2; }
         button { cursor: pointer; transition: all 0.3s ease; }
         button:hover { opacity: 0.9; transform: translateY(-1px); }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>⚙️ Settings</h1>
-        <p style="color: #666; margin-bottom: 20px;">Manage your profile and preferences</p>
+        <h1>⚙️ Налаштування</h1>
+        <p style="color: #666; margin-bottom: 20px;">Керуйте профілем та параметрами</p>
         
-        <h2>👤 My Profile</h2>
+        <h2>👤 Мій профіль</h2>
         <form id="profileForm">
             <div class="form-group">
-                <label>Age (years)</label>
+                <label>Ім'я</label>
+                <input type="text" id="firstName" placeholder="Ваше ім'я">
+            </div>
+            <div class="form-group">
+                <label>Вік (років)</label>
                 <input type="number" id="age" placeholder="25">
             </div>
             <div class="form-group">
-                <label>Gender</label>
+                <label>Стать</label>
                 <select id="gender">
-                    <option value="male">Male</option>
-                    <option value="female">Female</option>
+                    <option value="male">Чоловік</option>
+                    <option value="female">Жінка</option>
                 </select>
             </div>
             <div class="form-group">
-                <label>Height (cm)</label>
+                <label>Зріст (см)</label>
                 <input type="number" id="height" placeholder="170">
             </div>
             <div class="form-group">
-                <label>Weight (kg)</label>
+                <label>Вага (кг)</label>
                 <input type="number" id="weight" step="0.1" placeholder="70">
             </div>
             <div class="form-group">
-                <label>Activity Level</label>
+                <label>Рівень активності</label>
                 <select id="activityLevel">
-                    <option value="sedentary">Sedentary (office job)</option>
-                    <option value="light">Light (1-3 workouts)</option>
-                    <option value="moderate">Moderate (3-5 workouts)</option>
-                    <option value="active">High (6-7 workouts)</option>
-                    <option value="very_active">Very High (physical work)</option>
+                    <option value="sedentary">Сидячий (офісна робота)</option>
+                    <option value="light">Легкий (1-3 тренування)</option>
+                    <option value="moderate">Помірний (3-5 тренувань)</option>
+                    <option value="active">Високий (6-7 тренувань)</option>
+                    <option value="very_active">Дуже високий (фізична робота)</option>
                 </select>
             </div>
             <div class="form-group">
-                <label>My Goal</label>
+                <label>Моя ціль</label>
                 <select id="goal">
-                    <option value="lose">🏃 Lose Weight</option>
-                    <option value="maintain">⚖️ Maintain Weight</option>
-                    <option value="gain">💪 Gain Muscle</option>
+                    <option value="lose">🏃 Схуднення</option>
+                    <option value="maintain">⚖️ Підтримка ваги</option>
+                    <option value="gain">💪 Набір м'язової маси</option>
                 </select>
             </div>
-            <button type="submit" class="save-btn">💾 Save Changes</button>
+            <button type="submit" class="save-btn">💾 Зберегти зміни</button>
         </form>
         
-        <h2>🤖 Test Gemini AI</h2>
         <div class="info-box">
-            <p>📌 <strong>How to test:</strong></p>
-            <ul>
-                <li>Use the test button below to check if Gemini API is working</li>
-                <li>Take a photo of your food for real AI analysis</li>
-                <li>Gemini will analyze calories, protein, fats, carbs</li>
-            </ul>
+            <p>🤖 <strong>Gemini AI</strong> — аналізує ваші фото їжі, визначає калорії та БЖУ</p>
         </div>
         
-        <div style="background: #f0f0f0; border-radius: 20px; padding: 16px; text-align: center;">
-            <p style="margin-bottom: 12px;">Check if AI analysis is working</p>
-            <div style="display: flex; gap: 12px; margin-bottom: 16px;">
-                <button onclick="testWithEmoji()" style="flex: 1; background: #4caf50; padding: 12px;">🍎 Test with Emoji</button>
-                <button onclick="document.getElementById('testPhoto').click()" style="flex: 1; background: #2196f3; padding: 12px;">📷 Your Photo</button>
-            </div>
-            <input type="file" id="testPhoto" accept="image/*" style="display: none;">
-            <div id="testResult" class="test-result"></div>
-        </div>
-        
-        <h2>ℹ️ System Status</h2>
-        <div style="background: #f8f9fa; border-radius: 20px; padding: 16px;">
-            <p><strong>Aura Health</strong> v2.0.0</p>
-            <p>🤖 AI Gemini: <span id="geminiStatus">Checking...</span></p>
-            <p>💾 Mode: <span id="dbMode">In-memory</span></p>
-            <p style="font-size: 12px; color: #999; margin-top: 12px;">© 2024 Aura Health | AI Nutritionist</p>
-        </div>
-        
-        <button class="back-btn save-btn" onclick="goBack()">← Back to Dashboard</button>
+        <button class="back-btn save-btn" onclick="goBack()">← На головну</button>
     </div>
     
     <script>
@@ -146,6 +108,7 @@
                 const response = await fetch(`/api/user/${telegramId}`);
                 const data = await response.json();
                 if (!data.error) {
+                    document.getElementById('firstName').value = data.first_name || '';
                     document.getElementById('age').value = data.age || '';
                     document.getElementById('gender').value = data.gender || 'male';
                     document.getElementById('height').value = data.height || '';
@@ -161,6 +124,7 @@
         document.getElementById('profileForm').onsubmit = async (e) => {
             e.preventDefault();
             const profile = {
+                first_name: document.getElementById('firstName').value,
                 age: parseInt(document.getElementById('age').value) || 0,
                 gender: document.getElementById('gender').value,
                 height: parseInt(document.getElementById('height').value) || 0,
@@ -177,118 +141,14 @@
                 });
                 
                 if (response.ok) {
-                    alert('✅ Profile saved successfully!');
+                    alert('✅ Профіль збережено!');
                 } else {
-                    alert('❌ Save failed');
+                    alert('❌ Помилка збереження');
                 }
             } catch (error) {
-                alert('❌ Network error');
+                alert('❌ Помилка мережі');
             }
         };
-        
-        async function testWithEmoji() {
-            const resultDiv = document.getElementById('testResult');
-            resultDiv.style.display = 'block';
-            resultDiv.className = 'test-result loading';
-            resultDiv.innerHTML = '<div style="text-align: center;">🎨 Generating test image...</div>';
-            
-            try {
-                const canvas = document.createElement('canvas');
-                canvas.width = 512;
-                canvas.height = 512;
-                const ctx = canvas.getContext('2d');
-                ctx.fillStyle = '#ffffff';
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-                ctx.font = '300px "Segoe UI Emoji"';
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.fillText('🍎', canvas.width/2, canvas.height/2);
-                ctx.font = '40px Arial';
-                ctx.fillStyle = '#333';
-                ctx.fillText('Apple', canvas.width/2, canvas.height - 80);
-                
-                const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
-                const formData = new FormData();
-                formData.append('photo', blob, 'apple.png');
-                
-                resultDiv.innerHTML = '<div style="text-align: center;">🤖 Analyzing with Gemini AI...</div>';
-                
-                const response = await fetch('/api/analyze', {
-                    method: 'POST',
-                    body: formData
-                });
-                
-                const data = await response.json();
-                
-                if (response.ok) {
-                    resultDiv.className = 'test-result success';
-                    resultDiv.innerHTML = `
-                        <strong>✅ Gemini AI is working!</strong>
-                        <p style="margin-top: 8px;">Recognized: ${data.name}</p>
-                        <p>🔥 ${data.calories} kcal | 🥩 ${data.protein}g | 🧈 ${data.fat}g | 🍚 ${data.carbs}g</p>
-                        <p>💡 ${data.feedback}</p>
-                    `;
-                    document.getElementById('geminiStatus').innerHTML = '<span class="status-badge active">✅ Active</span>';
-                } else {
-                    throw new Error(data.error);
-                }
-            } catch (error) {
-                resultDiv.className = 'test-result error';
-                resultDiv.innerHTML = `<strong>❌ Gemini Error:</strong><p>${error.message}</p><p>Check API key in Render</p>`;
-                document.getElementById('geminiStatus').innerHTML = '<span class="status-badge inactive">❌ Inactive</span>';
-            }
-        }
-        
-        document.getElementById('testPhoto').onchange = async (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
-            
-            const resultDiv = document.getElementById('testResult');
-            resultDiv.style.display = 'block';
-            resultDiv.className = 'test-result loading';
-            resultDiv.innerHTML = '<div style="text-align: center;">🤖 Analyzing your photo...</div>';
-            
-            const formData = new FormData();
-            formData.append('photo', file);
-            
-            try {
-                const response = await fetch('/api/analyze', {
-                    method: 'POST',
-                    body: formData
-                });
-                const data = await response.json();
-                
-                if (response.ok) {
-                    resultDiv.className = 'test-result success';
-                    resultDiv.innerHTML = `
-                        <strong>✅ Analysis Result:</strong>
-                        <p style="margin-top: 8px;">🍽️ ${data.name}</p>
-                        <p>🔥 ${data.calories} kcal | 🥩 ${data.protein}g | 🧈 ${data.fat}g | 🍚 ${data.carbs}g</p>
-                        <p>💡 ${data.feedback}</p>
-                    `;
-                } else {
-                    throw new Error(data.error);
-                }
-            } catch (error) {
-                resultDiv.className = 'test-result error';
-                resultDiv.innerHTML = `<strong>❌ Error:</strong><p>${error.message}</p>`;
-            }
-        };
-        
-        async function checkStatus() {
-            try {
-                const response = await fetch('/health');
-                const data = await response.json();
-                if (data.gemini === 'initialized') {
-                    document.getElementById('geminiStatus').innerHTML = '<span class="status-badge active">✅ Active</span>';
-                } else {
-                    document.getElementById('geminiStatus').innerHTML = '<span class="status-badge inactive">❌ Inactive</span>';
-                }
-                document.getElementById('dbMode').innerHTML = data.mode === 'in-memory' ? '💾 In-memory' : '☁️ Supabase';
-            } catch (error) {
-                document.getElementById('geminiStatus').innerHTML = '<span class="status-badge inactive">❌ Connection error</span>';
-            }
-        }
         
         function goBack() {
             window.location.href = `/?user_id=${telegramId}`;
@@ -296,7 +156,6 @@
         
         if (telegramId) {
             loadProfile();
-            checkStatus();
         }
     </script>
 </body>
