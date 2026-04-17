@@ -1,5 +1,5 @@
 # ============================================
-# Файл: main.py (ФІНАЛЬНИЙ)
+# Файл: main.py (ПОВНИЙ З ТЕСТОМ GEMINI API)
 # ============================================
 import os
 import logging
@@ -11,6 +11,7 @@ from dotenv import load_dotenv
 from datetime import datetime, timedelta
 from typing import Optional, List
 import json
+import httpx
 
 load_dotenv()
 
@@ -187,6 +188,8 @@ async def settings_page():
 @app.get("/api/user/{telegram_id}")
 async def get_user(telegram_id: int):
     try:
+        if telegram_id == 0 or str(telegram_id) == 'null':
+            return JSONResponse({"error": "Invalid user id"}, status_code=400)
         profile = get_user_profile(telegram_id)
         if profile:
             return JSONResponse(profile)
@@ -213,6 +216,7 @@ async def update_user(telegram_id: int, profile: dict):
         daily_calories = nutrition_calculator.calculate_tdee(profile_data)
         
         user_data = {
+            "first_name": profile.get("first_name", "Користувач"),
             "age": profile_data["age"],
             "gender": profile_data["gender"],
             "height": profile_data["height"],
@@ -326,13 +330,113 @@ async def get_weekly_report(telegram_id: int):
     except Exception as e:
         return JSONResponse({"error": str(e)}, status_code=500)
 
+# ============================================
+# TEST GEMINI API ENDPOINT
+# ============================================
+
+@app.get("/test-gemini")
+async def test_gemini():
+    """Тест Gemini API - перевіряє чи ключ працює"""
+    try:
+        api_key = os.getenv("GEMINI_API_KEY")
+        if not api_key:
+            return {
+                "status": "error",
+                "message": "GEMINI_API_KEY not set in environment variables",
+                "solution": "Add GEMINI_API_KEY in Render Environment Variables"
+            }
+        
+        logger.info(f"Testing Gemini API with key: {api_key[:10]}...")
+        
+        # Тест 1: Перевірка ключа через простий текстовий запит
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={api_key}"
+        payload = {
+            "contents": [{"parts": [{"text": "Say 'API key is valid'"}]}]
+        }
+        
+        async with httpx.AsyncClient() as client:
+            response = await client.post(url, json=payload, timeout=15.0)
+            
+            if response.status_code == 200:
+                data = response.json()
+                if "candidates" in data and len(data["candidates"]) > 0:
+                    result_text = data["candidates"][0]["content"]["parts"][0]["text"]
+                    return {
+                        "status": "success",
+                        "message": "Gemini API key is valid and working!",
+                        "test_response": result_text[:200],
+                        "status_code": response.status_code
+                    }
+                else:
+                    return {
+                        "status": "error",
+                        "message": "API response unexpected format",
+                        "response": str(data)[:200],
+                        "status_code": response.status_code
+                    }
+            elif response.status_code == 429:
+                return {
+                    "status": "error",
+                    "message": "QUOTA EXCEEDED - Free tier limit reached. Try again later or upgrade.",
+                    "status_code": 429,
+                    "solution": "Wait 1-2 minutes or create a new API key"
+                }
+            elif response.status_code == 403:
+                return {
+                    "status": "error",
+                    "message": "API KEY INVALID or EXPIRED",
+                    "status_code": 403,
+                    "solution": "Create a new API key at https://makersuite.google.com/app/apikey"
+                }
+            else:
+                return {
+                    "status": "error",
+                    "message": f"HTTP {response.status_code}",
+                    "response": response.text[:300],
+                    "status_code": response.status_code
+                }
+                
+    except httpx.TimeoutException:
+        return {
+            "status": "error",
+            "message": "Connection timeout - API took too long to respond",
+            "solution": "Check your internet connection and try again"
+        }
+    except Exception as e:
+        logger.error(f"Test Gemini error: {e}", exc_info=True)
+        return {
+            "status": "error",
+            "message": str(e),
+            "solution": "Check server logs for details"
+        }
+
+# ============================================
+# TEST DATABASE ENDPOINT
+# ============================================
+
+@app.get("/test-db")
+async def test_db():
+    """Тест стану бази даних"""
+    return JSONResponse({
+        "status": "connected",
+        "mode": "in-memory",
+        "stats": {
+            "users": len(_memory_db["users"]),
+            "meals": sum(len(m) for m in _memory_db["meals"].values()),
+            "water": sum(_memory_db["water"].values()),
+            "notifications": sum(len(n) for n in _memory_db["notifications"].values())
+        }
+    })
+
 @app.get("/health")
 async def health():
+    """Перевірка стану сервісу"""
+    gemini_status = "initialized" if gemini_service and hasattr(gemini_service, 'available') and gemini_service.available else "failed"
     return JSONResponse({
         "status": "healthy",
         "timestamp": datetime.utcnow().isoformat(),
         "mode": "in-memory",
-        "gemini": "initialized" if gemini_service else "failed",
+        "gemini": gemini_status,
         "bot": "ready" if app_instance else "initializing"
     })
 
