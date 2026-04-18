@@ -28,25 +28,12 @@
             --shadow-lg: 0 16px 48px rgba(0,0,0,0.15);
             --transition-fast: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
             --transition-normal: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            --transition-slow: 0.5s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
             background: var(--light-gray);
             overflow-x: hidden;
-        }
-
-        /* Анімований фон */
-        .animated-bg {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            z-index: -1;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            opacity: 0.05;
         }
 
         .app-container {
@@ -56,72 +43,102 @@
             min-height: 100vh;
             position: relative;
             box-shadow: var(--shadow-lg);
-            padding-bottom: 100px;
+            padding-bottom: 80px;
         }
 
-        /* Анімація появи сторінки */
-        .page {
-            animation: pageEnter 0.4s cubic-bezier(0.2, 0.9, 0.4, 1.1);
-        }
-
-        @keyframes pageEnter {
-            from {
-                opacity: 0;
-                transform: translateX(20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateX(0);
-            }
-        }
-
-        /* Хедер */
-        .header {
-            padding: 20px;
-            background: var(--white);
-            border-bottom: 1px solid var(--light-gray);
-            position: sticky;
-            top: 0;
-            z-index: 10;
-            backdrop-filter: blur(10px);
-            background: rgba(255,255,255,0.95);
-        }
-
-        .greeting {
-            font-size: 28px;
-            font-weight: 700;
-            color: var(--dark);
+        /* Мінімізоване вітальне вікно */
+        .welcome-minimized {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            margin: 16px 20px;
+            padding: 12px 20px;
+            border-radius: 20px;
+            color: white;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            transition: all var(--transition-normal);
             animation: fadeInUp 0.5s ease;
         }
 
-        .greeting span {
+        .welcome-minimized:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .welcome-minimized .greeting-small {
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .welcome-minimized .greeting-small span {
+            font-weight: 700;
+        }
+
+        .expand-icon {
+            font-size: 20px;
+            transition: transform var(--transition-fast);
+        }
+
+        /* Розгорнуте вітальне вікно */
+        .welcome-expanded {
             background: linear-gradient(135deg, var(--primary), var(--secondary));
-            -webkit-background-clip: text;
-            background-clip: text;
-            color: transparent;
+            margin: 16px 20px;
+            padding: 24px;
+            border-radius: 32px;
+            color: white;
             position: relative;
+            overflow: hidden;
+            animation: fadeInUp 0.5s ease;
+        }
+
+        .welcome-expanded::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -20%;
+            width: 200px;
+            height: 200px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 50%;
+        }
+
+        .greeting-large {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .greeting-large span {
+            background: rgba(255,255,255,0.3);
+            padding: 0 8px;
+            border-radius: 20px;
             display: inline-block;
         }
 
-        .greeting span::after {
-            content: '';
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            width: 0;
-            height: 2px;
-            background: linear-gradient(135deg, var(--primary), var(--secondary));
-            transition: width var(--transition-normal);
-        }
-
-        .greeting span:hover::after {
-            width: 100%;
-        }
-
-        .subtitle {
+        .subtitle-welcome {
             font-size: 14px;
-            color: var(--gray);
-            margin-top: 4px;
+            opacity: 0.9;
+        }
+
+        .minimize-btn {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            width: 32px;
+            height: 32px;
+            border-radius: 16px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all var(--transition-fast);
+        }
+
+        .minimize-btn:hover {
+            background: rgba(255,255,255,0.3);
+            transform: scale(1.05);
         }
 
         /* Картка калорій */
@@ -133,15 +150,8 @@
             color: var(--white);
             position: relative;
             overflow: hidden;
-            transform-origin: center;
-            transition: transform var(--transition-normal), box-shadow var(--transition-normal);
             box-shadow: var(--shadow-md);
             animation: fadeInUp 0.5s ease;
-        }
-
-        .calories-card:hover {
-            transform: translateY(-4px);
-            box-shadow: var(--shadow-lg);
         }
 
         .calories-card::before {
@@ -161,89 +171,15 @@
             50% { transform: translate(-10px, -10px) scale(1.05); }
         }
 
-        .calories-label {
-            font-size: 14px;
-            opacity: 0.9;
-            margin-bottom: 8px;
-        }
-
-        .calories-value {
-            font-size: 52px;
-            font-weight: 800;
-            line-height: 1;
-            display: flex;
-            align-items: baseline;
-            gap: 4px;
-        }
-
-        .calories-value .number {
-            display: inline-block;
-            animation: countUp 0.6s ease;
-        }
-
-        @keyframes countUp {
-            from {
-                opacity: 0;
-                transform: translateY(20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .calories-value small {
-            font-size: 18px;
-            font-weight: 500;
-        }
-
-        .calories-sub {
-            font-size: 13px;
-            opacity: 0.8;
-            margin-bottom: 20px;
-        }
-
-        /* Прогрес бар з анімацією */
-        .progress-bar {
-            background: rgba(255,255,255,0.25);
-            height: 10px;
-            border-radius: 5px;
-            overflow: hidden;
-            margin: 16px 0 12px;
-        }
-
-        .progress-fill {
-            background: var(--white);
-            height: 100%;
-            width: 0%;
-            border-radius: 5px;
-            transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .progress-fill::after {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
-            animation: shimmer 1.5s infinite;
-        }
-
-        @keyframes shimmer {
-            0% { transform: translateX(-100%); }
-            100% { transform: translateX(100%); }
-        }
-
-        .calories-stats {
-            display: flex;
-            justify-content: space-between;
-            font-size: 13px;
-            opacity: 0.9;
-        }
+        .calories-label { font-size: 14px; opacity: 0.9; margin-bottom: 8px; }
+        .calories-value { font-size: 48px; font-weight: 800; line-height: 1; margin-bottom: 4px; }
+        .calories-value small { font-size: 18px; font-weight: 500; }
+        .calories-sub { font-size: 13px; opacity: 0.8; margin-bottom: 20px; }
+        .progress-bar { background: rgba(255,255,255,0.25); height: 8px; border-radius: 4px; overflow: hidden; margin: 16px 0 12px; }
+        .progress-fill { background: var(--white); height: 100%; width: 0%; border-radius: 4px; transition: width 0.5s ease; position: relative; overflow: hidden; }
+        .progress-fill::after { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent); animation: shimmer 1.5s infinite; }
+        @keyframes shimmer { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
+        .calories-stats { display: flex; justify-content: space-between; font-size: 13px; opacity: 0.9; }
 
         /* Картка макронутрієнтів */
         .macros-card {
@@ -255,67 +191,56 @@
             border: 1px solid #eee;
             animation: fadeInUp 0.6s ease;
         }
-
-        .macros-title {
-            font-size: 16px;
-            font-weight: 600;
-            color: var(--dark);
-            margin-bottom: 16px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .macro-item {
-            margin-bottom: 16px;
-            animation: slideIn 0.3s ease;
-        }
-
-        @keyframes slideIn {
-            from {
-                opacity: 0;
-                transform: translateX(-20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateX(0);
-            }
-        }
-
-        .macro-header {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 6px;
-            font-size: 13px;
-        }
-
-        .macro-name {
-            color: var(--gray);
-        }
-
-        .macro-values {
-            font-weight: 600;
-            color: var(--dark);
-        }
-
-        .macro-bar {
-            background: #eee;
-            height: 8px;
-            border-radius: 4px;
-            overflow: hidden;
-        }
-
-        .macro-fill {
-            height: 100%;
-            border-radius: 4px;
-            transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
+        .macros-title { font-size: 16px; font-weight: 600; color: var(--dark); margin-bottom: 16px; }
+        .macro-item { margin-bottom: 16px; }
+        .macro-header { display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 13px; }
+        .macro-name { color: var(--gray); }
+        .macro-values { font-weight: 600; color: var(--dark); }
+        .macro-bar { background: #eee; height: 8px; border-radius: 4px; overflow: hidden; }
+        .macro-fill { height: 100%; border-radius: 4px; transition: width 0.5s ease; }
         .fill-protein { background: #4caf50; }
         .fill-fat { background: #ff9800; }
         .fill-carbs { background: #2196f3; }
 
-        /* Кнопка LOG MEAL (ефект пульсації) */
+        /* Таймлайн прийомів їжі */
+        .meals-timeline {
+            padding: 8px 20px;
+            display: flex;
+            justify-content: space-between;
+            background: white;
+            margin-bottom: 20px;
+        }
+        .time-dot {
+            text-align: center;
+            flex: 1;
+            position: relative;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .time-dot.active .dot {
+            background: #6c5ce7;
+            transform: scale(1.2);
+            box-shadow: 0 0 0 4px rgba(108,92,231,0.2);
+        }
+        .time-dot.active .time-label {
+            color: #6c5ce7;
+            font-weight: 600;
+        }
+        .dot {
+            width: 10px;
+            height: 10px;
+            background: #ddd;
+            border-radius: 50%;
+            margin: 0 auto 8px;
+            transition: all 0.3s ease;
+        }
+        .time-label {
+            font-size: 12px;
+            color: #999;
+            transition: color 0.3s ease;
+        }
+
+        /* Кнопка LOG MEAL */
         .log-meal-btn {
             background: linear-gradient(135deg, var(--primary), var(--secondary));
             margin: 0 20px 20px;
@@ -327,126 +252,75 @@
             cursor: pointer;
             transition: all var(--transition-normal);
             box-shadow: var(--shadow-md);
-            position: relative;
-            overflow: hidden;
             animation: pulse 2s infinite;
         }
-
         @keyframes pulse {
-            0%, 100% {
-                box-shadow: 0 4px 15px rgba(108,92,231,0.3);
-            }
-            50% {
-                box-shadow: 0 4px 25px rgba(108,92,231,0.5);
-            }
+            0%, 100% { box-shadow: 0 4px 15px rgba(108,92,231,0.3); }
+            50% { box-shadow: 0 4px 25px rgba(108,92,231,0.5); }
         }
+        .log-meal-btn:active { transform: scale(0.98); }
+        .log-meal-left { display: flex; align-items: center; gap: 16px; }
+        .log-meal-icon { font-size: 40px; }
+        .log-meal-text { color: var(--white); }
+        .log-meal-title { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+        .log-meal-subtitle { font-size: 13px; opacity: 0.9; }
+        .log-meal-arrow { font-size: 24px; color: var(--white); opacity: 0.8; transition: transform var(--transition-fast); }
+        .log-meal-btn:hover .log-meal-arrow { transform: translateX(4px); }
 
-        .log-meal-btn::before {
-            content: '';
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            width: 0;
-            height: 0;
-            background: rgba(255,255,255,0.2);
-            border-radius: 50%;
-            transform: translate(-50%, -50%);
-            transition: width 0.6s, height 0.6s;
-        }
-
-        .log-meal-btn:active::before {
-            width: 300px;
-            height: 300px;
-        }
-
-        .log-meal-btn:active {
-            transform: scale(0.97);
-        }
-
-        .log-meal-left {
-            display: flex;
-            align-items: center;
-            gap: 16px;
-        }
-
-        .log-meal-icon {
-            font-size: 40px;
-            animation: bounce 2s infinite;
-        }
-
-        @keyframes bounce {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-5px); }
-        }
-
-        .log-meal-text {
-            color: var(--white);
-        }
-
-        .log-meal-title {
-            font-size: 20px;
-            font-weight: 700;
-            margin-bottom: 4px;
-        }
-
-        .log-meal-subtitle {
-            font-size: 13px;
-            opacity: 0.9;
-        }
-
-        .log-meal-arrow {
-            font-size: 24px;
-            color: var(--white);
-            opacity: 0.8;
-            transition: transform var(--transition-fast);
-        }
-
-        .log-meal-btn:hover .log-meal-arrow {
-            transform: translateX(4px);
-        }
-
-        /* AI Рекомендація */
-        .ai-recommendation {
-            background: linear-gradient(135deg, #f0e6ff, #faf5ff);
-            margin: 0 20px 20px;
-            padding: 20px;
-            border-radius: 24px;
-            border-left: 4px solid var(--primary);
-            animation: fadeInUp 0.5s ease;
-        }
-
-        .ai-recommendation h4 {
-            font-size: 16px;
-            color: var(--primary);
-            margin-bottom: 8px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .ai-recommendation p {
-            font-size: 14px;
-            color: var(--dark);
-            line-height: 1.4;
-        }
-
-        /* Список прийомів */
-        .meals-list {
+        /* Секція вітамінів */
+        .supplements-section {
             margin: 0 20px 20px;
         }
-
         .section-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
             margin-bottom: 16px;
         }
+        .section-header h3 { font-size: 18px; color: var(--dark); }
 
-        .section-header h3 {
-            font-size: 18px;
-            color: var(--dark);
+        .supplement-card {
+            background: var(--white);
+            border-radius: 20px;
+            padding: 16px;
+            margin-bottom: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: var(--shadow-sm);
+            border: 1px solid #eee;
+            transition: all var(--transition-normal);
+            animation: fadeInUp 0.4s ease;
+        }
+        .supplement-card:active { transform: scale(0.98); }
+        .supplement-info h4 { font-size: 16px; color: var(--dark); margin-bottom: 4px; }
+        .supplement-info p { font-size: 12px; color: var(--gray); }
+        .supplement-check {
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            border: 2px solid #ddd;
+            background: white;
+            cursor: pointer;
+            transition: all var(--transition-fast);
+        }
+        .supplement-check.checked {
+            background: var(--primary);
+            border-color: var(--primary);
+            position: relative;
+        }
+        .supplement-check.checked::after {
+            content: '✓';
+            color: white;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
         }
 
+        /* Список прийомів їжі */
+        .meals-list { margin: 0 20px 20px; }
         .meal-accordion {
             background: var(--white);
             border-radius: 20px;
@@ -457,12 +331,6 @@
             transition: all var(--transition-normal);
             animation: fadeInUp 0.4s ease;
         }
-
-        .meal-accordion:hover {
-            transform: translateX(4px);
-            box-shadow: var(--shadow-md);
-        }
-
         .meal-header {
             display: flex;
             justify-content: space-between;
@@ -472,108 +340,28 @@
             background: var(--white);
             transition: background var(--transition-fast);
         }
-
-        .meal-header:hover {
-            background: var(--light-gray);
-        }
-
-        .meal-header-left {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            flex: 1;
-        }
-
-        .meal-icon {
-            font-size: 32px;
-        }
-
-        .meal-info {
-            flex: 1;
-        }
-
-        .meal-name {
-            font-weight: 600;
-            color: var(--dark);
-            font-size: 16px;
-        }
-
-        .meal-time {
-            font-size: 11px;
-            color: var(--gray);
-            margin-top: 2px;
-        }
-
-        .meal-calories {
-            font-weight: 700;
-            color: var(--primary);
-            font-size: 16px;
-        }
-
-        .meal-arrow {
-            font-size: 20px;
-            color: var(--gray);
-            transition: transform 0.3s ease;
-        }
-
-        .meal-accordion.open .meal-arrow {
-            transform: rotate(180deg);
-        }
-
+        .meal-header:hover { background: var(--light-gray); }
+        .meal-header-left { display: flex; align-items: center; gap: 12px; flex: 1; }
+        .meal-icon { font-size: 32px; }
+        .meal-info { flex: 1; }
+        .meal-name { font-weight: 600; color: var(--dark); font-size: 16px; }
+        .meal-time { font-size: 11px; color: var(--gray); margin-top: 2px; }
+        .meal-calories { font-weight: 700; color: var(--primary); font-size: 16px; }
+        .meal-arrow { font-size: 20px; color: var(--gray); transition: transform 0.3s ease; }
+        .meal-accordion.open .meal-arrow { transform: rotate(180deg); }
         .meal-details {
             padding: 0 16px 16px 16px;
             display: none;
             border-top: 1px solid #eee;
             background: #fafafa;
         }
-
-        .meal-accordion.open .meal-details {
-            display: block;
-            animation: slideDown 0.3s ease;
-        }
-
-        @keyframes slideDown {
-            from {
-                opacity: 0;
-                transform: translateY(-10px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .meal-macros {
-            display: flex;
-            gap: 20px;
-            margin: 12px 0;
-        }
-
-        .meal-macro {
-            text-align: center;
-            flex: 1;
-        }
-
-        .meal-macro-value {
-            font-size: 18px;
-            font-weight: 700;
-            color: var(--dark);
-        }
-
-        .meal-macro-label {
-            font-size: 11px;
-            color: var(--gray);
-        }
-
-        .meal-feedback {
-            background: #e8f5e9;
-            padding: 8px 12px;
-            border-radius: 12px;
-            font-size: 12px;
-            color: #2e7d32;
-            margin: 8px 0;
-        }
-
+        .meal-accordion.open .meal-details { display: block; animation: slideDown 0.3s ease; }
+        @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+        .meal-macros { display: flex; gap: 20px; margin: 12px 0; }
+        .meal-macro { text-align: center; flex: 1; }
+        .meal-macro-value { font-size: 18px; font-weight: 700; color: var(--dark); }
+        .meal-macro-label { font-size: 11px; color: var(--gray); }
+        .meal-feedback { background: #e8f5e9; padding: 8px 12px; border-radius: 12px; font-size: 12px; color: #2e7d32; margin: 8px 0; }
         .delete-meal {
             background: var(--danger);
             color: var(--white);
@@ -587,23 +375,11 @@
             width: 100%;
             transition: all var(--transition-fast);
         }
+        .delete-meal:active { transform: scale(0.97); }
 
-        .delete-meal:active {
-            transform: scale(0.97);
-        }
-
-        /* Список рекомендацій */
-        .recommendations-section {
-            margin: 0 20px 20px;
-        }
-
-        .section-title {
-            font-size: 16px;
-            font-weight: 600;
-            color: var(--dark);
-            margin-bottom: 16px;
-        }
-
+        /* Рекомендації */
+        .recommendations-section { margin: 0 20px 20px; }
+        .section-title { font-size: 16px; font-weight: 600; color: var(--dark); margin-bottom: 16px; }
         .recommendation-card {
             background: var(--white);
             border-radius: 20px;
@@ -618,42 +394,13 @@
             cursor: pointer;
             animation: fadeInUp 0.4s ease;
         }
-
-        .recommendation-card:active {
-            transform: scale(0.98);
-            background: #fafafa;
-        }
-
-        .rec-emoji {
-            font-size: 44px;
-            transition: transform var(--transition-fast);
-        }
-
-        .recommendation-card:active .rec-emoji {
-            transform: scale(1.1);
-        }
-
-        .rec-content {
-            flex: 1;
-        }
-
-        .rec-title {
-            font-size: 16px;
-            font-weight: 600;
-            color: var(--dark);
-        }
-
-        .rec-subtitle {
-            font-size: 12px;
-            color: var(--primary);
-            margin: 4px 0;
-        }
-
-        .rec-description {
-            font-size: 12px;
-            color: var(--gray);
-        }
-
+        .recommendation-card:active { transform: scale(0.98); }
+        .rec-emoji { font-size: 44px; transition: transform var(--transition-fast); }
+        .recommendation-card:active .rec-emoji { transform: scale(1.1); }
+        .rec-content { flex: 1; }
+        .rec-title { font-size: 16px; font-weight: 600; color: var(--dark); }
+        .rec-subtitle { font-size: 12px; color: var(--primary); margin: 4px 0; }
+        .rec-description { font-size: 12px; color: var(--gray); }
         .log-button {
             background: linear-gradient(135deg, var(--primary), var(--secondary));
             color: white;
@@ -665,10 +412,7 @@
             cursor: pointer;
             transition: all var(--transition-fast);
         }
-
-        .log-button:active {
-            transform: scale(0.95);
-        }
+        .log-button:active { transform: scale(0.95); }
 
         /* Нижня навігація */
         .bottom-nav {
@@ -686,7 +430,6 @@
             border-top: 1px solid var(--light-gray);
             z-index: 100;
         }
-
         .nav-item {
             display: flex;
             flex-direction: column;
@@ -697,37 +440,12 @@
             border-radius: 30px;
             transition: all var(--transition-fast);
         }
-
-        .nav-item:hover {
-            background: rgba(108,92,231,0.1);
-            transform: translateY(-2px);
-        }
-
-        .nav-item.active {
-            background: rgba(108,92,231,0.15);
-        }
-
-        .nav-item.active .nav-icon {
-            color: var(--primary);
-            transform: translateY(-3px);
-        }
-
-        .nav-item.active .nav-label {
-            color: var(--primary);
-            font-weight: 600;
-        }
-
-        .nav-icon {
-            font-size: 22px;
-            color: var(--gray);
-            transition: all var(--transition-fast);
-        }
-
-        .nav-label {
-            font-size: 11px;
-            color: var(--gray);
-            transition: color var(--transition-fast);
-        }
+        .nav-item:hover { background: rgba(108,92,231,0.1); transform: translateY(-2px); }
+        .nav-item.active { background: rgba(108,92,231,0.15); }
+        .nav-item.active .nav-icon { color: var(--primary); transform: translateY(-3px); }
+        .nav-item.active .nav-label { color: var(--primary); font-weight: 600; }
+        .nav-icon { font-size: 22px; color: var(--gray); transition: all var(--transition-fast); }
+        .nav-label { font-size: 11px; color: var(--gray); transition: color var(--transition-fast); }
 
         /* Модальне вікно */
         .modal {
@@ -744,12 +462,7 @@
             justify-content: center;
             animation: fadeIn 0.3s ease;
         }
-
-        @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-        }
-
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         .modal-content {
             background: var(--white);
             border-radius: 32px;
@@ -758,63 +471,37 @@
             width: 350px;
             animation: modalSlideUp 0.3s cubic-bezier(0.2, 0.9, 0.4, 1.1);
         }
+        @keyframes modalSlideUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+        .modal-header { display: flex; justify-content: space-between; margin-bottom: 20px; }
+        .close-modal { background: none; border: none; font-size: 24px; cursor: pointer; color: var(--gray); transition: transform var(--transition-fast); }
+        .close-modal:hover { transform: rotate(90deg); }
 
-        @keyframes modalSlideUp {
-            from {
-                opacity: 0;
-                transform: translateY(30px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .modal-header {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 20px;
-        }
-
-        .close-modal {
-            background: none;
-            border: none;
-            font-size: 24px;
-            cursor: pointer;
-            color: var(--gray);
-            transition: transform var(--transition-fast);
-        }
-
-        .close-modal:hover {
-            transform: rotate(90deg);
-        }
-
-        @media (max-width: 430px) {
-            .app-container {
-                margin: 0;
-                border-radius: 0;
-            }
-        }
-
-        ::-webkit-scrollbar {
-            width: 0;
-            background: transparent;
-        }
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        .page { animation: fadeInUp 0.4s ease; }
+        @media (max-width: 430px) { .app-container { margin: 0; border-radius: 0; } }
+        ::-webkit-scrollbar { width: 0; background: transparent; }
     </style>
 </head>
 <body>
-    <div class="animated-bg"></div>
     <div class="app-container">
         <!-- Головна сторінка -->
         <div id="dashboardPage" class="page">
-            <div class="header">
-                <div class="greeting">Вітаю, <span id="userName">Користувач</span>!</div>
-                <div class="subtitle">Готові відстежувати харчування?</div>
+            <!-- Мінімізоване вітальне вікно (за замовчуванням) -->
+            <div id="welcomeMinimized" class="welcome-minimized" onclick="expandWelcome()">
+                <div class="greeting-small">👋 Вітаю, <span id="userNameSmall">Користувач</span>!</div>
+                <div class="expand-icon">▼</div>
+            </div>
+
+            <!-- Розгорнуте вітальне вікно (приховане) -->
+            <div id="welcomeExpanded" class="welcome-expanded" style="display: none;">
+                <button class="minimize-btn" onclick="minimizeWelcome()">−</button>
+                <div class="greeting-large">Вітаю, <span id="userNameLarge">Користувач</span>!</div>
+                <div class="subtitle-welcome">Готові відстежувати харчування?</div>
             </div>
 
             <div class="calories-card">
                 <div class="calories-label">🔥 Залишилось калорій</div>
-                <div class="calories-value"><span class="number" id="caloriesRemaining">0</span> <small>ккал</small></div>
+                <div class="calories-value"><span id="caloriesRemaining">0</span> <small>ккал</small></div>
                 <div class="calories-sub">з <span id="calorieGoal">2000</span> ккал</div>
                 <div class="progress-bar"><div class="progress-fill" id="calorieProgress" style="width: 0%"></div></div>
                 <div class="calories-stats"><span>🍽️ Спожито: <strong id="consumedCalories">0</strong> ккал</span><span>⚡ Залишилось: <strong id="remainingCalories">0</strong> ккал</span></div>
@@ -836,14 +523,39 @@
                 </div>
             </div>
 
-            <div id="aiRecommendation" class="ai-recommendation" style="display: none;">
-                <h4>🤖 AI-рекомендація на сьогодні</h4>
-                <p id="recommendationText"></p>
+            <!-- Таймлайн прийомів їжі -->
+            <div class="meals-timeline">
+                <div class="time-dot active" data-time="08:00">
+                    <div class="dot"></div>
+                    <div class="time-label">08:00</div>
+                </div>
+                <div class="time-dot" data-time="12:00">
+                    <div class="dot"></div>
+                    <div class="time-label">12:00</div>
+                </div>
+                <div class="time-dot" data-time="15:00">
+                    <div class="dot"></div>
+                    <div class="time-label">15:00</div>
+                </div>
+                <div class="time-dot" data-time="18:00">
+                    <div class="dot"></div>
+                    <div class="time-label">18:00</div>
+                </div>
+                <div class="time-dot" data-time="21:00">
+                    <div class="dot"></div>
+                    <div class="time-label">21:00</div>
+                </div>
             </div>
 
             <div class="log-meal-btn" id="logMealBtn">
                 <div class="log-meal-left"><div class="log-meal-icon">📸</div><div class="log-meal-text"><div class="log-meal-title">ДОДАТИ СТРАВУ</div><div class="log-meal-subtitle">Сфотографуйте вашу їжу</div></div></div>
                 <div class="log-meal-arrow">→</div>
+            </div>
+
+            <!-- Секція вітамінів -->
+            <div class="supplements-section">
+                <div class="section-header"><h3>💊 Вітаміни та добавки</h3><span id="supplementsCount">0</span></div>
+                <div id="supplementsList"></div>
             </div>
 
             <div class="meals-list">
@@ -897,8 +609,24 @@
             fatGoal: 50,
             carbsGoal: 200,
             mealsByDate: {},
+            supplements: [
+                { name: "Омега-3", dosage: "1000mg", time: "10:00", checked: false },
+                { name: "Вітамін D3", dosage: "2000 IU", time: "08:00", checked: false },
+                { name: "Мультивітамін", dosage: "Daily", time: "", checked: false }
+            ],
             hasProfile: false
         };
+
+        // Функції для вітального вікна
+        function expandWelcome() {
+            document.getElementById('welcomeMinimized').style.display = 'none';
+            document.getElementById('welcomeExpanded').style.display = 'block';
+        }
+
+        function minimizeWelcome() {
+            document.getElementById('welcomeExpanded').style.display = 'none';
+            document.getElementById('welcomeMinimized').style.display = 'flex';
+        }
 
         async function compressImage(file) {
             return new Promise((resolve) => {
@@ -940,17 +668,44 @@
                 } catch(e) {}
             }
             if (urlName && urlName !== 'null' && urlName !== 'undefined') userData.firstName = urlName;
-            document.getElementById('userName').innerText = userData.firstName;
+            
+            // Оновлюємо ім'я в обох вітальних блоках
+            document.getElementById('userNameSmall').innerText = userData.firstName;
+            document.getElementById('userNameLarge').innerText = userData.firstName;
+            
             document.getElementById('calorieGoal').innerText = userData.calorieGoal;
             document.getElementById('proteinGoal').innerText = userData.proteinGoal;
             document.getElementById('fatGoal').innerText = userData.fatGoal;
             document.getElementById('carbsGoal').innerText = userData.carbsGoal;
             updateDashboard();
+            renderSupplements();
             renderRecommendations();
             renderMealPlans();
         }
 
         function saveUserData() { if(telegramId) localStorage.setItem(`aura_user_${telegramId}`, JSON.stringify(userData)); }
+
+        function toggleSupplement(idx) {
+            userData.supplements[idx].checked = !userData.supplements[idx].checked;
+            saveUserData();
+            renderSupplements();
+        }
+
+        function renderSupplements() {
+            const container = document.getElementById('supplementsList');
+            const checked = userData.supplements.filter(s => s.checked).length;
+            document.getElementById('supplementsCount').innerText = `${checked}/${userData.supplements.length}`;
+            
+            container.innerHTML = userData.supplements.map((sup, idx) => `
+                <div class="supplement-card">
+                    <div class="supplement-info">
+                        <h4>${sup.name}</h4>
+                        <p>${sup.dosage} ${sup.time ? `• ${sup.time}` : ''}</p>
+                    </div>
+                    <div class="supplement-check ${sup.checked ? 'checked' : ''}" onclick="toggleSupplement(${idx})"></div>
+                </div>
+            `).join('');
+        }
 
         function addMeal(meal) {
             const todayKey = new Date().toISOString().split('T')[0];
@@ -1119,6 +874,14 @@
                     else switchPage(n);
                 });
             });
+            // Таймлайн
+            document.querySelectorAll('.time-dot').forEach(dot => {
+                dot.addEventListener('click', () => {
+                    document.querySelectorAll('.time-dot').forEach(d => d.classList.remove('active'));
+                    dot.classList.add('active');
+                    showToast(`Показую прийоми за ${dot.dataset.time}`);
+                });
+            });
         }
 
         async function loadTelegramName() {
@@ -1133,7 +896,9 @@
                     if(userData.hasProfile && data.protein_goal) userData.proteinGoal = data.protein_goal;
                     if(userData.hasProfile && data.fat_goal) userData.fatGoal = data.fat_goal;
                     if(userData.hasProfile && data.carbs_goal) userData.carbsGoal = data.carbs_goal;
-                    document.getElementById('userName').innerText = userData.firstName;
+                    
+                    document.getElementById('userNameSmall').innerText = userData.firstName;
+                    document.getElementById('userNameLarge').innerText = userData.firstName;
                     document.getElementById('calorieGoal').innerText = userData.calorieGoal;
                     document.getElementById('proteinGoal').innerText = userData.proteinGoal;
                     document.getElementById('fatGoal').innerText = userData.fatGoal;
