@@ -1,5 +1,5 @@
 # ============================================
-# Файл: main.py (ПОВНИЙ З ДІАГНОСТИКОЮ GEMINI)
+# Файл: main.py (ФІНАЛЬНИЙ)
 # ============================================
 import os
 import logging
@@ -88,6 +88,15 @@ def get_weekly_meals(telegram_id: int):
             filtered.append(meal)
     return filtered
 
+def save_supplement(telegram_id: int, supplement_data: dict):
+    if telegram_id not in _memory_db["supplements"]:
+        _memory_db["supplements"][telegram_id] = []
+    _memory_db["supplements"][telegram_id].append(supplement_data)
+    return supplement_data
+
+def get_supplements(telegram_id: int):
+    return _memory_db["supplements"].get(telegram_id, [])
+
 def save_water(telegram_id: int, amount: int):
     _memory_db["water"][telegram_id] = amount
     return amount
@@ -114,7 +123,6 @@ async def lifespan(app: FastAPI):
     
     if app_instance is None:
         logger.info("Creating bot application...")
-        # Новий синтаксис для python-telegram-bot 21.x
         app_instance = Application.builder().token(BOT_TOKEN).build()
         setup_handlers(app_instance)
         await app_instance.initialize()
@@ -229,7 +237,7 @@ async def update_user(telegram_id: int, profile: dict):
             daily_calories = profile.get("daily_calorie_goal", 2000)
         
         user_data = {
-            "first_name": profile.get("first_name", "Користувач"),
+            "first_name": profile.get("first_name", "User"),
             "age": int(age) if age else 25,
             "gender": profile.get("gender", "male"),
             "height": int(height) if height else 170,
@@ -293,6 +301,28 @@ async def create_meal(meal: dict):
         logger.error(f"Error creating meal: {e}")
         return JSONResponse({"error": str(e)}, status_code=500)
 
+@app.get("/api/supplements/{telegram_id}")
+async def get_supplements_endpoint(telegram_id: int):
+    try:
+        supplements = get_supplements(telegram_id)
+        return JSONResponse(supplements)
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+@app.post("/api/supplements")
+async def create_supplement(supplement: dict):
+    try:
+        telegram_id = supplement.get("telegram_id")
+        supplement_data = {
+            "name": supplement.get("name"),
+            "created_at": datetime.utcnow().isoformat()
+        }
+        result = save_supplement(telegram_id, supplement_data)
+        return JSONResponse(result or {})
+    except Exception as e:
+        logger.error(f"Error creating supplement: {e}")
+        return JSONResponse({"error": str(e)}, status_code=500)
+
 @app.get("/api/water/{telegram_id}")
 async def get_water_endpoint(telegram_id: int):
     try:
@@ -308,6 +338,24 @@ async def save_water_endpoint(telegram_id: int, data: dict):
         result = save_water(telegram_id, total)
         return JSONResponse({"total": result})
     except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+@app.get("/api/notifications/{telegram_id}")
+async def get_notifications_endpoint(telegram_id: int):
+    try:
+        times = get_notifications(telegram_id)
+        return JSONResponse({"times": times})
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+@app.post("/api/notifications/{telegram_id}")
+async def set_notifications_endpoint(telegram_id: int, data: dict):
+    try:
+        times = data.get("times", [])
+        result = save_notifications(telegram_id, times)
+        return JSONResponse({"status": "success" if result else "error", "times": times})
+    except Exception as e:
+        logger.error(f"Error setting notifications: {e}")
         return JSONResponse({"error": str(e)}, status_code=500)
 
 @app.get("/api/daily-summary/{telegram_id}")
@@ -381,9 +429,6 @@ async def test_gemini():
                 "solution": "Add GEMINI_API_KEY in Render Environment Variables"
             }
         
-        logger.info(f"Testing Gemini API with key: {api_key[:10]}...")
-        
-        # Test with simple text request
         url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={api_key}"
         payload = {
             "contents": [{"parts": [{"text": "Say 'API key is valid'"}]}]
@@ -402,135 +447,28 @@ async def test_gemini():
                         "test_response": result_text[:200],
                         "status_code": response.status_code
                     }
-                else:
-                    return {
-                        "status": "error",
-                        "message": "API response unexpected format",
-                        "response": str(data)[:200],
-                        "status_code": response.status_code
-                    }
             elif response.status_code == 429:
                 return {
                     "status": "error",
-                    "message": "QUOTA EXCEEDED - Free tier limit reached. Try again later or create a new API key.",
+                    "message": "QUOTA EXCEEDED - Free tier limit reached.",
                     "status_code": 429,
-                    "solution": "Create a new API key at https://makersuite.google.com/app/apikey"
+                    "solution": "Create a new API key or wait 1-2 minutes"
                 }
             elif response.status_code == 403:
                 return {
                     "status": "error",
                     "message": "API KEY INVALID or EXPIRED",
                     "status_code": 403,
-                    "solution": "Create a new API key at https://makersuite.google.com/app/apikey"
+                    "solution": "Create a new API key"
                 }
             else:
                 return {
                     "status": "error",
                     "message": f"HTTP {response.status_code}",
-                    "response": response.text[:300],
-                    "status_code": response.status_code
+                    "response": response.text[:200]
                 }
-                
-    except httpx.TimeoutException:
-        return {
-            "status": "error",
-            "message": "Connection timeout - API took too long to respond",
-            "solution": "Check your internet connection and try again"
-        }
     except Exception as e:
-        logger.error(f"Test Gemini error: {e}", exc_info=True)
-        return {
-            "status": "error",
-            "message": str(e),
-            "solution": "Check server logs for details"
-        }
-
-# ============================================
-# DIAGNOSTIC ENDPOINT FOR GEMINI
-# ============================================
-
-@app.get("/debug-gemini")
-async def debug_gemini():
-    """Діагностика Gemini API - перевіряє всі можливі моделі"""
-    import httpx
-    
-    api_key = os.getenv("GEMINI_API_KEY")
-    
-    result = {
-        "timestamp": datetime.utcnow().isoformat(),
-        "api_key_present": bool(api_key),
-        "api_key_preview": api_key[:15] + "..." if api_key else None,
-        "models_tested": [],
-        "available_model": None,
-        "all_failed": True
-    }
-    
-    if not api_key:
-        result["error"] = "GEMINI_API_KEY not set in environment variables"
-        result["solution"] = "Add GEMINI_API_KEY in Render Environment Variables"
-        return result
-    
-    models_to_test = [
-        "gemini-2.0-flash",
-        "gemini-1.5-flash",
-        "gemini-1.5-pro",
-        "gemini-pro"
-    ]
-    
-    for model in models_to_test:
-        test_result = {
-            "model": model,
-            "status": "testing",
-            "status_code": None,
-            "error": None
-        }
-        
-        try:
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
-            payload = {
-                "contents": [{"parts": [{"text": "Test"}]}]
-            }
-            
-            async with httpx.AsyncClient() as client:
-                response = await client.post(url, json=payload, timeout=10.0)
-                test_result["status_code"] = response.status_code
-                
-                if response.status_code == 200:
-                    test_result["status"] = "available"
-                    result["available_model"] = model
-                    result["all_failed"] = False
-                elif response.status_code == 429:
-                    test_result["status"] = "quota_exceeded"
-                    test_result["error"] = "Quota exceeded for this model"
-                elif response.status_code == 403:
-                    test_result["status"] = "invalid_key"
-                    test_result["error"] = "API key invalid or expired"
-                elif response.status_code == 404:
-                    test_result["status"] = "not_found"
-                    test_result["error"] = "Model not found"
-                else:
-                    test_result["status"] = "error"
-                    test_result["error"] = response.text[:100]
-                    
-        except httpx.TimeoutException:
-            test_result["status"] = "timeout"
-            test_result["error"] = "Connection timeout"
-        except Exception as e:
-            test_result["status"] = "exception"
-            test_result["error"] = str(e)[:100]
-        
-        result["models_tested"].append(test_result)
-    
-    # Рекомендації
-    if result["all_failed"]:
-        if any(m["status_code"] == 429 for m in result["models_tested"]):
-            result["recommendation"] = "Create a new API key at https://makersuite.google.com/app/apikey"
-        elif any(m["status_code"] == 403 for m in result["models_tested"]):
-            result["recommendation"] = "API key is invalid. Create a new one at https://makersuite.google.com/app/apikey"
-        else:
-            result["recommendation"] = "Check your API key and billing at https://makersuite.google.com/app/apikey"
-    
-    return result
+        return {"status": "error", "message": str(e)}
 
 # ============================================
 # TEST DATABASE ENDPOINT
@@ -545,6 +483,7 @@ async def test_db():
         "stats": {
             "users": len(_memory_db["users"]),
             "meals": sum(len(m) for m in _memory_db["meals"].values()),
+            "supplements": sum(len(s) for s in _memory_db["supplements"].values()),
             "water": sum(_memory_db["water"].values()),
             "notifications": sum(len(n) for n in _memory_db["notifications"].values())
         }
